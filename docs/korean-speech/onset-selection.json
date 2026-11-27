@@ -1,0 +1,40 @@
+{
+  "selected": "ending",
+  "baseline": "90a5df8d51e0b9cca91960677a3e41ce7c58cf93",
+  "decision": "Locked before reading the reserved carrier. Do not refit after the holdout. Ship the candidate in free text only if neither direction of lax/tense confusion increases on the held-out acoustic proxy and detection/word discrimination does not collapse. Keep the archived preset available for reproduction. Human identification, timbre similarity and intonation preference require separate listening.",
+  "development": {
+    "isolatedNearest": [
+      12,
+      13
+    ],
+    "carrierNearest": [
+      10,
+      11
+    ],
+    "carrierLaxToTense": [
+      5,
+      4
+    ],
+    "carrierTenseToLax": [
+      0,
+      0
+    ],
+    "alignedSyllableDurationMAE": [
+      82.5,
+      67.3
+    ]
+  },
+  "interventions": [
+    "Close the initial lips before breath pressure rises",
+    "Short low transition after voiced intervocalic labial; adjust post-release pitch of aspirated and pressed quality of tense labials",
+    "Use three conservative /ʌ/ gestures estimated from recorded vowel formants",
+    "Compress only the tails of the last two vowels of a question with at least three vowel nuclei; evaluate speaker-specific ending shape"
+  ],
+  "heldBack": [
+    "earlier physical release",
+    "earlier glottal relaxation",
+    "shorten all syllables",
+    "uniform source changes",
+    "broad medial weakening"
+  ]
+}

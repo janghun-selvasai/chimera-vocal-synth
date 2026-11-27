@@ -82,7 +82,7 @@ def split_recording(path):
 
 
 class Analysis:
-    def __init__(self, samples, rate, release_hint=None):
+    def __init__(self, samples, rate, release_hint=None, *, require_onset=True):
         self.y, self.rate = samples, rate
         x = signal.resample_poly(samples, 8000, rate)
         self.t = np.arange(0, len(x), 40) / 8000
@@ -167,9 +167,9 @@ class Analysis:
             & (self.hz < typical * 1.8)
         )
         self.onset = next((float(self.t[a]) for a, b in possible if b - a >= 6), None)
-        if self.onset is None:
+        if self.onset is None and require_onset:
             raise ValueError("Cannot locate sustained voicing after the release")
-        self.vot = max(0, self.onset - self.burst)
+        self.vot = max(0, self.onset - self.burst) if self.onset is not None else None
 
     def summary(self, word):
         return {
