@@ -129,9 +129,9 @@ export function setupStudio() {
     signal: AbortSignal,
     fail: (e: unknown) => void,
   ) {
-    const target = take.poses[0],
-      steps = movingParts(target);
+    const target = take.poses[0];
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const steps = reduce ? [] : movingParts(target);
     const total = steps.length * STEP_SECONDS + HOLD_SECONDS;
     const began = performance.now();
     let previous = 0,
@@ -140,9 +140,7 @@ export function setupStudio() {
     phones.textContent = "첫소리  /" + take.first + "/";
     function tick(now: number) {
       if (signal.aborted) return;
-      const t = reduce
-        ? Math.max(0, total - HOLD_SECONDS) + (now - began) / 1000
-        : (now - began) / 1000;
+      const t = Math.max(0, (now - began) / 1000);
       if (t >= total) {
         draw(target);
         try {

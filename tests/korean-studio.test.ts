@@ -46,5 +46,5 @@ test("free text uses Korean phonology and can be cancelled before playback", asy
   expect(() => validateInput("...", false)).toThrow();
   const control = new AbortController();
   control.abort();
-  expect(synthesize("먹어", true, control.signal)).rejects.toThrow();
+  await expect(synthesize("먹어", true, control.signal)).rejects.toThrow();
 });
