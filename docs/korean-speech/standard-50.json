@@ -1,0 +1,74 @@
+{
+  "baseline": "a1214b10e327ec60467cd4e77a7593e5e3466b3b",
+  "scoring": "Korean Speak, clear, connected without a pause at spaces. Exact ordered surface segment labels for the complete item, including aspiration, tension, voicing and glides. No lexical vowel length, prosody or listening score. The reference IPA is literal data independent of CHIMERA. Hangul readings omit length marks. Sentence punctuation specifies phrasing.",
+  "fields": ["input", "standardHangul", "expectedPhones", "standardPronunciationArticle"],
+  "sources": {
+    "rules": "https://www.korean.go.kr/kornorms/regltn/regltnView.do?regltn_code=0002&regltn_no=346",
+    "10-12": "https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&pageIndex=1&qna_seq=307219",
+    "10넓적": "https://korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&pageIndex=1&qna_seq=321099",
+    "13-15": "https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&pageIndex=1&qna_seq=311699",
+    "17": "https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=&pageIndex=1&qna_seq=314000",
+    "18-20,29": "https://www.korean.go.kr/front/page/pageView.do?mn_id=72&page_id=P000102",
+    "23-27": "https://www.korean.go.kr/front/page/pageView.do?mn_id=72&page_id=P000102"
+  },
+  "groups": {
+    "연음": [
+      ["옷이", "오시", "o ɕ i", "13"],
+      ["꽃을", "꼬츨", "k͈ o tɕʰ ɯ l", "13"],
+      ["밭에", "바테", "p a tʰ e", "13"],
+      ["깎아.", "까까", "k͈ a k͈ a", "13"],
+      ["눈이 와.", "누니 와", "n u n i w a", "13"],
+      ["같이 먹어?", "가치 머거", "k a tɕʰ i m ʌ g ʌ", "13,17"],
+      ["밭 아래", "바다래", "p a d a ɾ ɛ", "15"],
+      ["꽃 위", "꼬뒤", "k͈ o d w i", "15"],
+      ["겉옷", "거돋", "k ʌ d o t", "15"],
+      ["맛없다", "마덥따", "m a d ʌ p t͈ a", "15,23"],
+      ["헛웃음", "허두슴", "h ʌ d u s ɯ m", "15,13"],
+      ["값어치", "가버치", "k a b ʌ tɕʰ i", "15"],
+      ["닭 앞에", "다가페", "t a g a pʰ e", "15,13"]
+    ],
+    "겹받침": [
+      ["넋이", "넉씨", "n ʌ k ɕ͈ i", "14"],
+      ["앉아.", "안자", "a n dʑ a", "14"],
+      ["젊어.", "절머", "tɕ ʌ l m ʌ", "14"],
+      ["핥아.", "할타", "h a l tʰ a", "14"],
+      ["읊어.", "을퍼", "ɯ l pʰ ʌ", "14"],
+      ["여덟", "여덜", "j ʌ d ʌ l", "10"],
+      ["맑게", "말께", "m a l k͈ e", "11"],
+      ["밟다", "밥따", "p a p t͈ a", "10,23"],
+      ["앉히다", "안치다", "a n tɕʰ i d a", "12"],
+      ["넓죽하다", "넙쭈카다", "n ʌ p tɕ͈ u kʰ a d a", "10,12,23"],
+      ["넓적하다", "넙쩌카다", "n ʌ p tɕ͈ ʌ kʰ a d a", "10,12,23"],
+      ["읽고", "일꼬", "i l k͈ o", "11"]
+    ],
+    "된소리되기": [
+      ["국밥", "국빱", "k u k p͈ a p", "23"],
+      ["옷고름", "옫꼬름", "o t k͈ o ɾ ɯ m", "23"],
+      ["앉고", "안꼬", "a n k͈ o", "24"],
+      ["얹다", "언따", "ʌ n t͈ a", "24"],
+      ["껴안다", "껴안따", "k͈ j ʌ a n t͈ a", "24"],
+      ["삼고", "삼꼬", "s a m k͈ o", "24"],
+      ["더듬지", "더듬찌", "t ʌ d ɯ m tɕ͈ i", "24"],
+      ["젊지", "점찌", "tɕ ʌ m tɕ͈ i", "24"],
+      ["넓게", "널께", "n ʌ l k͈ e", "25"],
+      ["핥다", "할따", "h a l t͈ a", "25"],
+      ["안기다", "안기다", "a n g i d a", "24"],
+      ["갈 데가", "갈떼가", "k a l t͈ e g a", "27"],
+      ["할 수 있다.", "할 쑤 읻따", "h a l s͈ u i t t͈ a", "27,23"]
+    ],
+    "비음화": [
+      ["국물", "궁물", "k u ŋ m u l", "18"],
+      ["부엌문", "부엉문", "p u ʌ ŋ m u n", "18"],
+      ["닫는", "단는", "t a n n ɯ n", "18"],
+      ["흙만", "흥만", "h ɯ ŋ m a n", "18"],
+      ["밥 먹는다.", "밤멍는다", "p a m m ʌ ŋ n ɯ n d a", "18"],
+      ["값 매기다", "감매기다", "k a m m ɛ g i d a", "18"],
+      ["의견란", "의견난", "ɰ i g j ʌ n n a n", "20"],
+      ["막론", "망논", "m a ŋ n o n", "19"],
+      ["협력", "혐녁", "h j ʌ m n j ʌ k", "19"],
+      ["생산량", "생산냥", "s ɛ ŋ s a n n j a ŋ", "20"],
+      ["꽃잎", "꼰닙", "k͈ o n n i p", "18,29"],
+      ["색연필", "생년필", "s ɛ ŋ n j ʌ n pʰ i l", "18,29"]
+    ]
+  }
+}
