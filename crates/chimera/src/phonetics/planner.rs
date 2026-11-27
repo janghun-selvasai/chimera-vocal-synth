@@ -577,6 +577,21 @@ pub fn plan_timed<'a>(input: impl Iterator<Item = TimedSegment<'a>>, o: &PlanOpt
                 let g = Gesture::new(t0 + 0.25 * dur, t1 + past, 0.035, if aspirated { 0.045 } else { 0.02 }, 6.0, one(ControlKey::ABDUCTION, if aspirated { 0.36 } else { 0.22 })).label("aspiration");
                 voiced_again = g.end();
                 gestures.push(g);
+            } else if let Some(tail) = s.vot.filter(|_| def.manner == Manner::Fricative) {
+                // A Korean sibilant's glottal opening outlasts its oral constriction by a
+                // front-end-specified duration. Account for the closing ramp in that duration.
+                let ramp = js_min(0.020, tail / rate);
+                gestures.push(
+                    Gesture::new(
+                        t0 - 0.015,
+                        t1 + tail / rate - ramp,
+                        0.03,
+                        ramp,
+                        6.0,
+                        one(ControlKey::ABDUCTION, 0.3),
+                    )
+                    .label("sibilant release"),
+                );
             } else {
                 gestures.push(Gesture::new(t0 - 0.015, t1 + 0.005, 0.03, 0.03, 6.0, one(ControlKey::ABDUCTION, 0.3)).label("voiceless"));
             }

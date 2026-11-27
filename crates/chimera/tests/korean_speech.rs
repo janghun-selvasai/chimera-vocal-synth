@@ -30,6 +30,32 @@ fn sound_rules_survive_speech_planning() {
 }
 
 #[test]
+fn sibilants_keep_the_post_sandhi_contrast_in_the_clear_condition() {
+    for (plain, tense) in [("살", "쌀"), ("시", "씨")] {
+        let initial = |text, condition| phrases_with(text, condition)[0].segments[0].clone();
+        let a = initial(plain, Condition::Clear);
+        let b = initial(tense, Condition::Clear);
+        assert_eq!(a.ipa, b.ipa);
+        assert!(a.dur.unwrap() < b.dur.unwrap());
+        assert!(a.vot.unwrap() > b.vot.unwrap());
+        assert!(!a.pressed_release && b.pressed_release);
+        assert_eq!(
+            initial(plain, Condition::Full),
+            initial(tense, Condition::Full)
+        );
+    }
+    // 된소리되기 gives the ㅅ of 국수 a fortis onset within the phrase.
+    let medial = phrases("국수")[0]
+        .segments
+        .iter()
+        .find(|s| s.ipa == "s")
+        .unwrap()
+        .clone();
+    assert!(medial.pressed_release);
+    assert!(medial.vot.is_none());
+}
+
+#[test]
 fn matched_ablation_changes_only_selected_gestures() {
     for text in ["불", "풀", "뿔", "달", "탈", "딸"] {
         let plans: Vec<_> = [Condition::Vot, Condition::Pitch, Condition::Full]

@@ -161,7 +161,7 @@ export interface Segment {
   wordEnd?: boolean;
   /** a voiceless stop or affricate's aspiration as its front end decides it (unset: English's rule) */
   aspirated?: boolean;
-  /** how long an aspirated stop aspirates (s); unset: 50 ms */
+  /** Voice onset time for a stop, or post-frication aspiration for a marked fricative (s). */
   vot?: number;
   onsetSt?: number;
   pressedRelease?: boolean;

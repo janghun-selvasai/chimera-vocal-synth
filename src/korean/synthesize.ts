@@ -1,4 +1,4 @@
-import { chimeraModule } from "../wasm/chimera.ts";
+import { call, chimeraModule } from "../wasm/chimera.ts";
 import {
   activation,
   ARTIC_KEYS,
@@ -6,6 +6,7 @@ import {
   planPhrases,
   type Gesture,
   type HumanArtic,
+  type VoiceSource,
 } from "../wasm/engine.ts";
 import { writeGestures } from "../wasm/wire.ts";
 import { VoiceModel } from "../ui/analysis.ts";
@@ -20,12 +21,7 @@ import {
 
 const RATE = 48000;
 const STRIDE = 480; // One model pose per 10 ms of the actual output.
-// Speaking pitches used by the Korean CLI renders (chimera-cli::render::text_f0).
-const SPEAKING_F0: Record<BodyName, number> = {
-  male: 112,
-  female: 205,
-  child: 250,
-};
+// The CLI's "clear" condition and both studio views use the same source preset.
 type VoiceExports = { memory: WebAssembly.Memory } & Record<
   string,
   (...args: number[]) => number
@@ -36,7 +32,7 @@ export interface Utterance {
   rate: number;
   frames: TelemetryMessage[];
   first: string;
-  segments: { ipa: string; start: number; end: number }[];
+  segments: { ipa: string; kind: string; start: number; end: number }[];
 }
 
 export function validateInput(input: string, single: boolean): string {
@@ -85,7 +81,8 @@ export async function synthesize(
   voice: BodyName = "male",
 ): Promise<Utterance> {
   const body = PRESETS[voice];
-  const f0 = SPEAKING_F0[voice];
+  const profile = call<VoiceSource>("koSpeaker", { body: voice });
+  const f0 = profile.f0;
   const phrases = koreanPhrases(text);
   const plan = planPhrases(phrases, {
     body,
@@ -124,7 +121,8 @@ export async function synthesize(
       32,
     ).fill(NaN);
     source[0] = f0;
-    source[2] = 7.2;
+    source[2] = profile.pressure;
+    source[11] = profile.brightness;
     x.engine_set_source(h);
     const count = writeGestures(
       x.memory.buffer,
@@ -170,6 +168,7 @@ export async function synthesize(
       first: first.ipa,
       segments: plan.segments.map((s) => ({
         ipa: s.ipa,
+        kind: s.kind,
         start: s.t0 - timeOffset,
         end: s.t1 - timeOffset,
       })),

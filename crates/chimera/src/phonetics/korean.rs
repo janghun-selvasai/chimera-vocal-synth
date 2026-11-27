@@ -280,7 +280,7 @@ pub fn word_syllables(word: &str) -> Vec<Syllable> {
     syllables_from_blocks(compose(word).chars().filter(|&c| is_hangul(c)).map(decompose).collect())
 }
 
-fn syllables_from_blocks(mut blocks: Vec<Block>) -> Vec<Syllable> {
+fn pronounced_blocks(mut blocks: Vec<Block>) -> Vec<Block> {
     for i in 1..blocks.len() {
         let (l, r) = blocks.split_at_mut(i);
         join(l.last_mut().unwrap(), &mut r[0]);
@@ -288,6 +288,14 @@ fn syllables_from_blocks(mut blocks: Vec<Block>) -> Vec<Syllable> {
     if let Some(last) = blocks.last_mut() {
         last.coda = simplify(&last.coda).map(neutral).into_iter().collect();
     }
+    blocks
+}
+
+fn syllables_from_blocks(blocks: Vec<Block>) -> Vec<Syllable> {
+    syllables_from_pronounced(&pronounced_blocks(blocks))
+}
+
+fn syllables_from_pronounced(blocks: &[Block]) -> Vec<Syllable> {
     let mut out = Vec::with_capacity(blocks.len());
     for (i, b) in blocks.iter().enumerate() {
         let prev_coda = if i > 0 { blocks[i - 1].coda.last().copied() } else { None };

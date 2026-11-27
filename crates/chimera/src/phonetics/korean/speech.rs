@@ -1,6 +1,7 @@
 //! Hangul text for Speak. Each condition adds one operation to the same front end.
 use super::{
-    compose, decompose, is_hangul, neutral, simplify, syllables_from_blocks, word_syllables,
+    compose, decompose, is_hangul, neutral, pronounced_blocks, simplify, syllables_from_pronounced,
+    word_syllables,
 };
 use crate::phonetics::{Intonation, Segment, Syllable, english::Phrase};
 use serde::{Deserialize, Serialize};
@@ -15,6 +16,25 @@ pub enum Condition {
     Pitch,
     Full,
     Medial,
+    Clear,
+}
+
+pub fn studio_source(
+    body: crate::anatomy::human::BodyName,
+) -> crate::voice::human_voice::VoiceSource {
+    use crate::anatomy::human::BodyName;
+    use crate::voice::human_voice::{DEFAULT_SOURCE, VoiceSource};
+    // Three individual demo voices. Body geometry and its open-phase correction remain calibrated.
+    let (f0, brightness) = match body {
+        BodyName::Male => (112.0, 0.25),
+        BodyName::Female => (205.0, 0.28),
+        BodyName::Child => (285.0, 0.34),
+    };
+    VoiceSource {
+        f0,
+        brightness,
+        ..DEFAULT_SOURCE
+    }
 }
 
 pub fn is_korean_text(text: &str) -> bool {
@@ -22,7 +42,7 @@ pub fn is_korean_text(text: &str) -> bool {
     text.chars().any(is_hangul) && text.chars().all(|c| !c.is_alphanumeric() || is_hangul(c))
 }
 
-fn connected(words: &[String]) -> Vec<Syllable> {
+fn connected(words: &[String], clear: bool) -> Vec<Syllable> {
     let mut blocks = Vec::new();
     let mut ends = Vec::new();
     for w in words {
@@ -39,7 +59,35 @@ fn connected(words: &[String]) -> Vec<Syllable> {
                 .collect();
         }
     }
-    let mut syllables = syllables_from_blocks(blocks);
+    let blocks = pronounced_blocks(blocks);
+    let mut syllables = syllables_from_pronounced(&blocks);
+    if clear {
+        for (i, (block, syllable)) in blocks.iter().zip(&mut syllables).enumerate() {
+            if !matches!(block.onset, Some('ㅅ' | 'ㅆ')) {
+                continue;
+            }
+            let fortis = block.onset == Some('ㅆ');
+            let s = &mut syllable.onset[0];
+            s.pressed_release = fortis;
+            if i == 0 {
+                // Rounded experimental targets from Chang (2013), Figs 2–3. The high-front
+                // context has a smaller contrast than the open vowel. Interpolate other vowels
+                // with the pooled values rather than treating /a/ as universal.
+                let (frication, aspiration) = match (s.ipa.as_str(), block.vowel, fortis) {
+                    ("ɕ", _, false) => (0.165, 0.016),
+                    ("ɕ", _, true) => (0.180, 0.006),
+                    (_, "a", false) => (0.095, 0.050),
+                    (_, "a", true) => (0.150, 0.009),
+                    (_, _, false) => (0.130, 0.035),
+                    (_, _, true) => (0.165, 0.008),
+                };
+                s.dur = Some(frication);
+                s.vot = Some(aspiration);
+            } else if fortis {
+                s.length = Some(1.2);
+            }
+        }
+    }
     for end in ends {
         syllables[end].word_end = true;
     }
@@ -48,9 +96,9 @@ fn connected(words: &[String]) -> Vec<Syllable> {
 
 fn plan_group(words: Vec<String>, boundary: char, condition: Condition) -> Phrase {
     use Condition::*;
-    let joined = matches!(condition, Vot | Pitch | Full | Medial);
+    let joined = matches!(condition, Vot | Pitch | Full | Medial | Clear);
     let syllables = if joined {
-        connected(&words)
+        connected(&words, condition == Clear)
     } else {
         words.iter().flat_map(|w| word_syllables(w)).collect()
     };
@@ -61,11 +109,16 @@ fn plan_group(words: Vec<String>, boundary: char, condition: Condition) -> Phras
             // Allow periodic vowel cycles to emerge even after a 90 ms aspiration.
             syl.nucleus.dur = Some(if i + 1 == count { 0.205 } else { 0.145 });
         }
-        if let Some(stop) = syl.onset.first_mut() {
+        if let Some(stop) = syl
+            .onset
+            .first_mut()
+            .filter(|s| !matches!(s.ipa.as_str(), "s" | "ɕ"))
+        {
             let fortis = stop.aspirated == Some(false);
             let lax = stop.vot == Some(super::LAX_VOT)
                 || matches!(stop.ipa.as_str(), "b" | "d" | "g" | "dʑ");
-            if matches!(condition, Pitch | Full | Medial) && (i == 0 || condition == Medial) {
+            if matches!(condition, Pitch | Full | Medial | Clear) && (i == 0 || condition == Medial)
+            {
                 stop.onset_st = if lax {
                     Some(-3.5)
                 } else if fortis || stop.vot.is_some() {
@@ -74,7 +127,7 @@ fn plan_group(words: Vec<String>, boundary: char, condition: Condition) -> Phras
                     None
                 };
             }
-            stop.pressed_release = fortis && matches!(condition, Full | Medial);
+            stop.pressed_release = fortis && matches!(condition, Full | Medial | Clear);
         }
         segments.extend(syl.onset);
         segments.push(syl.nucleus);
@@ -106,7 +159,7 @@ fn plan_group(words: Vec<String>, boundary: char, condition: Condition) -> Phras
 }
 
 pub fn phrases(text: &str) -> Vec<Phrase> {
-    phrases_with(text, Condition::Full)
+    phrases_with(text, Condition::Clear)
 }
 
 pub fn phrases_with(text: &str, condition: Condition) -> Vec<Phrase> {

@@ -184,7 +184,7 @@ pub fn say(g: &EnglishG2P, text: &str, body_name: &str) -> Result<Spoken, String
 
 /// Say phrases from any G2P the way `render text` does (see [`say`]).
 pub fn say_phrases(phrases: &[Phrase], body_name: &str) -> Result<Spoken, String> {
-    let (plan, shown) = speech_plan(phrases, body_name)?;
+    let (plan, shown) = speech_plan(phrases, body_name, text_f0(body_name))?;
     let mut voice = HumanVoice::new(FS, body(body_name)?, 2);
     voice.set_source(&SourcePatch::f0(text_f0(body_name)));
     voice.schedule(&plan.gestures);
@@ -194,9 +194,8 @@ pub fn say_phrases(phrases: &[Phrase], body_name: &str) -> Result<Spoken, String
     Ok(Spoken { out, plan, shown })
 }
 
-fn speech_plan(phrases: &[Phrase], body_name: &str) -> Result<(Plan, String), String> {
+fn speech_plan(phrases: &[Phrase], body_name: &str, f0: f64) -> Result<(Plan, String), String> {
     body(body_name)?;
-    let f0 = text_f0(body_name);
     let shown: Vec<String> = phrases
         .iter()
         .map(|p| {
@@ -260,12 +259,19 @@ pub fn korean(ctx: &Ctx, a: &[String]) -> Result<(), String> {
     let args = &a[..a.len() - usize::from(trace)];
     if args.len() > 4 { return Err("render korean <out> <text> [body] [condition] [--trace]".into()); }
     let body_name = arg(args, 2, "male");
-    let condition: speech::Condition = serde_json::from_value(arg(args, 3, "full").into())
+    let condition: speech::Condition = serde_json::from_value(arg(args, 3, "clear").into())
         .map_err(|e| e.to_string())?;
     let phrases = speech::phrases_with(text, condition);
-    let (plan, shown) = speech_plan(&phrases, body_name)?;
+    let profile = speech::studio_source(chimera::anatomy::human::BodyName::parse(body_name));
+    let source = if condition == speech::Condition::Clear {
+        SourcePatch::from_source(&profile)
+    } else {
+        SourcePatch::f0(text_f0(body_name))
+    };
+    let f0 = source.f0.unwrap_or(text_f0(body_name));
+    let (plan, shown) = speech_plan(&phrases, body_name, f0)?;
     let mut voice = HumanVoice::new(FS, body(body_name)?, 2);
-    voice.set_source(&SourcePatch::f0(text_f0(body_name)));
+    voice.set_source(&source);
     voice.schedule(&plan.gestures);
     let mut out = vec![0.0; js_round(FS * (plan.end + 0.3)) as usize];
     let wav = wav_name(arg(args, 0, "out/korean"));
@@ -287,7 +293,7 @@ pub fn korean(ctx: &Ctx, a: &[String]) -> Result<(), String> {
         }
         ctx.write_wav(&wav, &out)?;
         let meta = serde_json::json!({"text":text,"condition":condition,"body":body_name,
-            "rate":1,"sampleRate":FS,"baseF0":text_f0(body_name),"phrases":phrases,"plan":plan,
+            "rate":1,"sampleRate":FS,"baseF0":f0,"phrases":phrases,"plan":plan,
             "columns":["seconds","minOralCm2","voicing","phase","glottalCm2","oqControl","sharpnessControl","modelHz"],"probes":probes});
         std::fs::write(format!("{stem}.json"), meta.to_string()).map_err(|e| e.to_string())?;
         std::fs::write(format!("{stem}.tele"), tele.bytes(body_mix(body_name)?)).map_err(|e| e.to_string())?;

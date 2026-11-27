@@ -21,6 +21,7 @@ use std::cell::RefCell;
 
 struct Model {
     id: usize,
+    owners: usize,
     body: BodyMix,
     fs: f64,
     airway: HumanAirway,
@@ -70,9 +71,12 @@ fn dispatch(st: &mut State, req: &Value) -> Res {
             let fs: f64 = arg(req, "sampleRate")?;
             let m = chimera::voice::human_voice::oversample_for(fs) as f64;
             let i = match st.models.iter().position(|x| x.body == body && x.fs == fs * m) {
-                Some(i) => i,
+                Some(i) => {
+                    st.models[i].owners += 1;
+                    i
+                }
                 None => {
-                    st.models.push(Model { id: st.next_model, body, fs: fs * m, airway: HumanAirway::new(fs * m, body.body()) });
+                    st.models.push(Model { id: st.next_model, owners: 1, body, fs: fs * m, airway: HumanAirway::new(fs * m, body.body()) });
                     st.next_model += 1;
                     st.models.len() - 1
                 }
@@ -90,7 +94,11 @@ fn dispatch(st: &mut State, req: &Value) -> Res {
         }
         "dropModel" => {
             let id: usize = arg(req, "model")?;
-            st.models.retain(|m| m.id != id);
+            // Live views can share the same preset and sample rate.
+            if let Some(i) = st.models.iter().position(|m| m.id == id) {
+                st.models[i].owners -= 1;
+                if st.models[i].owners == 0 { st.models.swap_remove(i); }
+            }
             Ok(Value::Null)
         }
         "restTip" => to_json(&chimera::anatomy::human::rest_tip(arg(req, "jaw")?, arg(req, "tbX")?, arg(req, "tbY")?)),
@@ -139,6 +147,7 @@ fn dispatch(st: &mut State, req: &Value) -> Res {
         "lyricsToSyllables" => to_json(&lyrics_in(&arg::<String>(req, "text")?, &st.g2p, &st.mandarin, arg::<Option<Lang>>(req, "lang")?.unwrap_or_default())),
         // Turkish needs no dictionary: its spelling rules are the G2P
         "koPhrases" => to_json(&chimera::phonetics::korean::speech::phrases(&arg::<String>(req, "text")?)),
+        "koSpeaker" => to_json(&chimera::phonetics::korean::speech::studio_source(arg(req, "body")?)),
         "trPhrases" => to_json(&turkish::to_phrases(&arg::<String>(req, "text")?)),
         // ---------------------------------------------------------------- creatures
         "creaturePreview" => {

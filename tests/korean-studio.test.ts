@@ -61,9 +61,22 @@ test("each Korean voice renders its own tract flow, pressure and voiced pitch on
     lengths.push(frame.t.phLen + frame.t.orLen);
   }
   expect(pitches[1]).toBeGreaterThan(pitches[0] * 1.4);
-  expect(pitches[2]).toBeGreaterThan(pitches[1]);
+  expect(pitches[2]).toBeGreaterThan(pitches[1] * 1.3);
   expect(lengths[1]).toBeLessThan(lengths[0]);
   expect(lengths[2]).toBeLessThan(lengths[1]);
+});
+
+test("dropping one studio view keeps a second view of the same tract usable", async () => {
+  const { VoiceModel } = await import("../src/ui/analysis.ts");
+  const { PRESETS } = await import("../src/ui/body.ts");
+  const first = new VoiceModel(PRESETS.male, 48000);
+  const second = new VoiceModel(PRESETS.male, 48000);
+  first.dispose();
+  try {
+    expect(second.transfer(NEUTRAL).formants.length).toBeGreaterThanOrEqual(2);
+  } finally {
+    second.dispose();
+  }
 });
 
 test("free text uses Korean phonology and can be cancelled before playback", async () => {
