@@ -17,6 +17,7 @@ pub enum Condition {
     Full,
     Medial,
     Clear,
+    Adducted,
 }
 
 pub fn studio_source(
@@ -96,9 +97,10 @@ fn connected(words: &[String], clear: bool) -> Vec<Syllable> {
 
 fn plan_group(words: Vec<String>, boundary: char, condition: Condition) -> Phrase {
     use Condition::*;
-    let joined = matches!(condition, Vot | Pitch | Full | Medial | Clear);
+    let clear = matches!(condition, Clear | Adducted);
+    let joined = clear || matches!(condition, Vot | Pitch | Full | Medial);
     let syllables = if joined {
-        connected(&words, condition == Clear)
+        connected(&words, clear)
     } else {
         words.iter().flat_map(|w| word_syllables(w)).collect()
     };
@@ -117,7 +119,7 @@ fn plan_group(words: Vec<String>, boundary: char, condition: Condition) -> Phras
             let fortis = stop.aspirated == Some(false);
             let lax = stop.vot == Some(super::LAX_VOT)
                 || matches!(stop.ipa.as_str(), "b" | "d" | "g" | "dʑ");
-            if matches!(condition, Pitch | Full | Medial | Clear) && (i == 0 || condition == Medial)
+            if (clear || matches!(condition, Pitch | Full | Medial)) && (i == 0 || condition == Medial)
             {
                 stop.onset_st = if lax {
                     Some(-3.5)
@@ -127,7 +129,8 @@ fn plan_group(words: Vec<String>, boundary: char, condition: Condition) -> Phras
                     None
                 };
             }
-            stop.pressed_release = fortis && matches!(condition, Full | Medial | Clear);
+            stop.pressed_release = fortis && (clear || matches!(condition, Full | Medial));
+            stop.adducted_stop = condition == Adducted && fortis && matches!(stop.ipa.as_str(), "p" | "t" | "k");
         }
         segments.extend(syl.onset);
         segments.push(syl.nucleus);

@@ -275,6 +275,7 @@ pub struct TimedSegment<'a> {
     pub vot: Option<f64>,
     pub onset_st: Option<f64>,
     pub pressed_release: bool,
+    pub adducted_stop: bool,
     pub nasalized: Option<bool>,
     pub palatalized: Option<bool>,
     pub breathy: Option<bool>,
@@ -302,6 +303,7 @@ struct Seg<'a> {
     vot: Option<f64>,
     onset_st: Option<f64>,
     pressed_release: bool,
+    adducted_stop: bool,
     nasalized: Option<bool>,
     palatalized: Option<bool>,
     breathy: Option<bool>,
@@ -372,6 +374,7 @@ pub fn plan_utterance(input: &[Segment], o: &PlanOptions) -> Plan {
         vot: s.vot,
         onset_st: s.onset_st,
         pressed_release: s.pressed_release,
+        adducted_stop: s.adducted_stop,
         nasalized: s.nasalized,
         palatalized: s.palatalized,
         breathy: s.breathy,
@@ -404,10 +407,10 @@ pub fn plan_timed<'a>(input: impl Iterator<Item = TimedSegment<'a>>, o: &PlanOpt
             };
             for (i, p) in parts.iter().enumerate() {
                 let dur = base * shares.get(i).copied().unwrap_or(1.0);
-                segs.push(Seg { ipa: p, dur, stress: s.stress, f0: s.f0, def: None, vowel: None, glide_from: i > 0, aspirated: None, vot: None, onset_st: None, pressed_release: false, nasalized: s.nasalized, palatalized: None, breathy: s.breathy, glide: None });
+                segs.push(Seg { ipa: p, dur, stress: s.stress, f0: s.f0, def: None, vowel: None, glide_from: i > 0, aspirated: None, vot: None, onset_st: None, pressed_release: false, adducted_stop: false, nasalized: s.nasalized, palatalized: None, breathy: s.breathy, glide: None });
             }
         } else {
-            segs.push(Seg { ipa: s.ipa, dur: s.dur, stress: s.stress, f0: s.f0, def: None, vowel: None, glide_from: false, aspirated: s.aspirated, vot: s.vot, onset_st: s.onset_st, pressed_release: s.pressed_release, nasalized: s.nasalized, palatalized: s.palatalized, breathy: s.breathy, glide: s.glide });
+            segs.push(Seg { ipa: s.ipa, dur: s.dur, stress: s.stress, f0: s.f0, def: None, vowel: None, glide_from: false, aspirated: s.aspirated, vot: s.vot, onset_st: s.onset_st, pressed_release: s.pressed_release, adducted_stop: s.adducted_stop, nasalized: s.nasalized, palatalized: s.palatalized, breathy: s.breathy, glide: s.glide });
         }
     }
     for s in segs.iter_mut() {
@@ -560,6 +563,15 @@ pub fn plan_timed<'a>(input: impl Iterator<Item = TimedSegment<'a>>, o: &PlanOpt
                 // vowel keeps its planned length. A front end that sets `aspirated` or `vot`
                 // (Mandarin's aspirated affricates) gets the stop's gesture below instead.
                 let g = affricate_folds(t0 + 0.15 * dur, t1).label("aspiration");
+                voiced_again = g.end();
+                gestures.push(g);
+            } else if def.manner == Manner::Stop && s.adducted_stop {
+                // Kagaya (1974): adduction precedes Korean fortis release. Use the
+                // glottal-stop ramps above; the following vowel keeps its own source.
+                // At phrase onset the breath is already rising in the 60 ms
+                // pre-roll. Set the folds before that breath can make a vowel.
+                let adduct_at = if i == 0 { o.t0 } else { t0 + 0.25 * dur };
+                let g = Gesture::new(adduct_at, t1, 0.012, 0.015, 8.0, one(ControlKey::CLOSURE, 1.0)).label("fortis adduction");
                 voiced_again = g.end();
                 gestures.push(g);
             } else if def.manner == Manner::Stop || def.manner == Manner::Affricate {

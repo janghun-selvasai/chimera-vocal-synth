@@ -165,6 +165,7 @@ export interface Segment {
   vot?: number;
   onsetSt?: number;
   pressedRelease?: boolean;
+  adductedStop?: boolean;
   /** a vowel said with the velum lowered (IPA combining tilde) */
   nasalized?: boolean;
   /** a consonant with a secondary palatal gesture, the tongue body raised and fronted (IPA ʲ) */

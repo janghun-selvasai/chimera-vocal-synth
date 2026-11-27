@@ -56,6 +56,34 @@ fn sibilants_keep_the_post_sandhi_contrast_in_the_clear_condition() {
 }
 
 #[test]
+fn fortis_adduction_replaces_only_the_stop_opening_and_survives_sandhi() {
+    use chimera::control::score::ControlKey;
+    for text in ["뿔", "저기 뿔 보여?", "까", "딸", "국밥"] {
+        let plans = [Condition::Clear, Condition::Adducted].map(|c| {
+            plan_utterance(&phrases_with(text, c)[0].segments, &PlanOptions::default())
+        });
+        let [before, after] = &plans;
+        assert_eq!(before.segments, after.segments);
+        let changed: Vec<_> = before.gestures.iter().zip(&after.gestures)
+            .filter(|(a, b)| serde_json::to_value(a).unwrap() != serde_json::to_value(b).unwrap()).collect();
+        assert_eq!(before.gestures.len(), after.gestures.len());
+        assert_eq!(changed.len(), 1, "{text}");
+        let (open, close) = changed[0];
+        assert!(open.targets.has(ControlKey::ABDUCTION));
+        assert_eq!(close.targets.get(ControlKey::CLOSURE), Some(1.0));
+        let index = after.segments.iter().position(|s| s.kind == "stop" && (close.t1 - s.t1).abs() < 1e-9).unwrap();
+        if index == 0 {
+            assert!(close.t0 <= PlanOptions::default().t0);
+        } else {
+            assert!(close.t0 >= after.segments[index].t0);
+        }
+    }
+    for text in ["불", "저기 불 보여?", "풀", "같이 먹어?", "쌀", "짜", "밥"] {
+        assert_eq!(phrases_with(text, Condition::Clear), phrases_with(text, Condition::Adducted));
+    }
+}
+
+#[test]
 fn matched_ablation_changes_only_selected_gestures() {
     for text in ["불", "풀", "뿔", "달", "탈", "딸"] {
         let plans: Vec<_> = [Condition::Vot, Condition::Pitch, Condition::Full]

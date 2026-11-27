@@ -31,6 +31,7 @@ interface Job {
   id: string;
   text: string;
   voice: BodyName;
+  condition?: "clear" | "adducted";
   fit?: Fit;
   /** Vowel segment index and measured onset in a connected-speech reference take. */
   lowerOnset?: { vowel: number; at: number };
@@ -157,7 +158,7 @@ function adjust(
 
 const [jobsFile, out] = process.argv.slice(2);
 const jobs: Job[] = JSON.parse(readFileSync(jobsFile, "utf8"));
-for (const { id, text, voice, fit, lowerOnset, lipLeadMs } of jobs) {
+for (const { id, text, voice, fit, condition, lowerOnset, lipLeadMs } of jobs) {
   if (lipLeadMs !== undefined && (!fit || lowerOnset)) {
     throw new Error("Change only lip timing on a matched voice profile");
   }
@@ -214,6 +215,7 @@ for (const { id, text, voice, fit, lowerOnset, lipLeadMs } of jobs) {
         };
       },
     },
+    condition,
   );
   // The driver reads lossless little-endian float PCM, then writes the listening WAV once.
   writeFileSync(join(out, id + ".f32"), Buffer.from(take.samples.buffer));

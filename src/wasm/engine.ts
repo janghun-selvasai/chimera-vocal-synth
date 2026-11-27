@@ -169,8 +169,8 @@ export function turkishPhrases(text: string): Phrase[] {
   return call("trPhrases", { text });
 }
 
-export function koreanPhrases(text: string): Phrase[] {
-  return call("koPhrases", { text });
+export function koreanPhrases(text: string, condition: "clear" | "adducted" = "clear"): Phrase[] {
+  return call("koPhrases", { text, condition });
 }
 
 // ------------------------------------------------------------------ planning

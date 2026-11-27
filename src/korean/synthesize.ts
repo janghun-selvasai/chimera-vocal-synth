@@ -90,11 +90,12 @@ export async function synthesize(
   signal: AbortSignal,
   voice: BodyName = "male",
   reference?: ReferenceControls,
+  condition: "clear" | "adducted" = "clear",
 ): Promise<Utterance> {
   const body = reference?.body ?? PRESETS[voice];
   const profile = call<VoiceSource>("koSpeaker", { body: voice });
   const f0 = reference?.f0 ?? profile.f0;
-  const phrases = koreanPhrases(text);
+  const phrases = koreanPhrases(text, condition);
   const original = planPhrases(phrases, {
     body,
     t0: prepare ? 0.3 : 0.08,

@@ -26,6 +26,7 @@ export function setupStudio() {
     phones = el("live-phones"),
     progress = el("stage-progress");
   const voiceSelect = el<HTMLSelectElement>("studio-voice");
+  const fortisSelect = el<HTMLSelectElement>("studio-fortis");
   const voice = () => voiceSelect.value as BodyName;
   const lipFlow = el("lip-flow");
   let mode: StudioMode = "tts",
@@ -219,7 +220,8 @@ export function setupStudio() {
       status().textContent = "음성을 합성하는 중…";
       title.textContent = "합성 중";
       const [take] = await Promise.all([
-        synthesize(text, mode === "prepare", active.signal, voice()),
+        synthesize(text, mode === "prepare", active.signal, voice(), undefined,
+          fortisSelect.value === "adducted" ? "adducted" : "clear"),
         ready,
       ]);
       active.signal.throwIfAborted();
@@ -257,6 +259,7 @@ export function setupStudio() {
     stage.setBody(PRESETS[voice()]);
     reset();
   };
+  fortisSelect.onchange = () => reset();
   new ResizeObserver(() =>
     stage.draw(lastPose, 0, lastGuide, lastFrame),
   ).observe(view);

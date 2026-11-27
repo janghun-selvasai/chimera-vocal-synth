@@ -263,7 +263,7 @@ pub fn korean(ctx: &Ctx, a: &[String]) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     let phrases = speech::phrases_with(text, condition);
     let profile = speech::studio_source(chimera::anatomy::human::BodyName::parse(body_name));
-    let source = if condition == speech::Condition::Clear {
+    let source = if matches!(condition, speech::Condition::Clear | speech::Condition::Adducted) {
         SourcePatch::from_source(&profile)
     } else {
         SourcePatch::f0(text_f0(body_name))

@@ -53,6 +53,9 @@ pub struct Segment {
     /// A short pressed pulse shape following a fortis release.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub pressed_release: bool,
+    /// Bring the folds together during oral closure, then release them with the stop.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub adducted_stop: bool,
     /// a vowel said with the velum lowered (IPA combining tilde); None or false: oral
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub nasalized: Option<bool>,

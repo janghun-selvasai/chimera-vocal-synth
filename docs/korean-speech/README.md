@@ -165,6 +165,7 @@ python3 tools/korean/standalone.py out/Korean-Speech-Lab.html
 | `pitch` | 같은 운율에서 구절 첫 평음 −3.5반음, 격음·경음 +1.5반음을 기존 피치 곡선에 곱셈으로 적용한 뒤 원래 곡선으로 복귀한다. |
 | `full` | 경음 파열 뒤 개방 비율과 닫힘 급격도를 45 ms 유지하고 30 ms에 걸쳐 복귀시킨다(속도 1 기준). |
 | `clear` | 현재 기본 조건. `full`에 화자별 음원 설정과 ㅅ·ㅆ의 마찰·기식 및 경음 성대 제어를 더한다. |
+| `adducted` | `clear`와 같은 화자·운율에서 ㄲ·ㄸ·ㅃ 초성의 폐쇄 동안 성대를 모으고 구강 파열에 맞춰 푼다. 텍스트 읽기와 첫 입모양에서 선택하는 실험 조건이다. |
 | `medial` | 위치 비교를 위해 구절 안의 해당 초성에도 같은 피치 규칙을 적용한다. |
 
 기존 한국어 초성의 VOT 제어를 유지했다. 격음은 90 ms, 평음은 45 ms의 기식 인자, 경음은 무기 플래너 분기를 사용한다. 이것은 제어 입력이다. 표의 VOT는 WAV와 성문 탐침으로 산출했다. 서울말 연구는 조작 방향의 근거로 사용했고 반음 수치와 지속시간은 이번 합성기의 실험 설정으로 정했다. [117명 발화의 VOT·F0 연구](https://www.sciencedirect.com/science/article/pii/S0095447014000357) · [한국어 폐쇄음의 음질과 지각 연구](https://pmc.ncbi.nlm.nih.gov/articles/PMC3105898/)
@@ -184,6 +185,20 @@ python3 tools/korean/asr_eval.py out/korean out/asr-input out/asr.csv /path/to/w
 ```
 
 ## 회귀 확인과 다음 실험
+
+### 경음 파열 전의 성대 움직임
+
+경음 파열 전에 관찰된 성대 내전을 모델의 기존 성문 폐쇄 제어로 시험한다. 구절 첫머리는 날숨 준비 때, 구절 안은 해당 폐쇄 구간에서 시작한다. 양 조건의 음소 길이, 입술·혀 목표, 모음의 피치와 파열 후 음질 제스처는 같다. ㄲ·ㄸ·ㅃ에는 된소리되기로 만들어진 초성도 포함된다. [Kagaya의 한국어 자음 내시경 관찰](https://www.sciencedirect.com/science/article/pii/S009544701931191X)
+
+```sh
+cargo build --release -p chimera-cli
+target/release/chimera render korean out/example "저기 뿔 보여?" female adducted --trace
+python3 tools/korean/fortis_adduction.py --out out/adduction
+```
+
+`--originals <폴더>`를 측정 스크립트에 추가하면 `reference_fit.py`가 분리한 실제 화자들의 뿌·뿔 녹음도 비교한다. 기본 세 음색으로 단독 ‘뿔’의 자음 시작 전 피크는 모음 피크에 비해 기존보다 11.6~13.3 dB 낮아졌다. 반면 단독 뿌·뿔 여섯 녹음 대비 VOT 절대오차 평균은 5.6 ms에서 7.2 ms로 늘었다. 두 결과를 함께 고려해 선택형으로 제공한다.
+
+### 기존 회귀 확인 기록
 
 - 영어 `Hello world.`, 터키어 `Merhaba, nasılsın?`, IPA `ˈɑpɑ`의 Speak WAV를 upstream과 비교했다. Sing은 같은 2음 멜로디에 영어 `hello`, 터키어 `elma`, 한국어 `먹어`, IPA 음절 JSON을 넣었다. 7개 WAV가 각각 upstream과 바이트 단위로 일치했다. 한국어 최소 경로에서 먼저 저장한 기준선도 최종 CLI의 `baseline --trace`와 일치했다.
 - Rust 워크스페이스 테스트 403개가 통과했다. Bun의 기존 테스트 121개와 한국어 소스 채널의 직렬화·렌더 테스트 1개가 통과했다. 타입 검사, 웹 프로덕션 빌드, 데스크톱·모바일의 기존 데모 E2E, 플러그인 UI 하니스도 통과했다. 오프라인 HTML과 HTTP 재생기에서 파열·유성 개시 이동, 재생, 조건 변경, 블라인드 응답 CSV, CLI 렌더 가져오기를 확인했다. 웹 Speak는 375~2560 px의 9개 너비에서 가로 넘침이 없었고, 1728×808에서는 발화 전·중·후의 세로 넘침도 0 px였다.
