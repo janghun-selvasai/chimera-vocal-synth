@@ -11,6 +11,7 @@ import type {
 import type { BodyName } from "../../src/worklet/protocol.ts";
 await initEngine();
 const { synthesize } = await import("../../src/korean/synthesize.ts");
+const { ARTIC_KEYS } = await import("../../src/wasm/engine.ts");
 const { VoiceModel } = await import("../../src/ui/analysis.ts");
 const { PRESETS } = await import("../../src/ui/body.ts");
 
@@ -33,6 +34,46 @@ interface Job {
   fit?: Fit;
   /** Vowel segment index and measured onset in a connected-speech reference take. */
   lowerOnset?: { vowel: number; at: number };
+  /** Instrument the medial fortis closure, optionally beginning lip motion earlier. */
+  lipLeadMs?: number;
+}
+
+function advanceLipClosure(plan: Plan, leadMs: number): Plan {
+  const stops = plan.segments.filter(
+    (s, i, all) =>
+      s.ipa === "p" &&
+      all[i + 1]?.ipa === "u" &&
+      all[i + 2]?.ipa === "l" &&
+      plan.gestures.some(
+        (g) => g.label === "pressed release" && Math.abs(g.t0 - s.t1) < 1e-6,
+      ),
+  );
+  if (stops.length !== 1 || !Number.isFinite(leadMs) || leadMs < 0) {
+    throw new Error(
+      "Expected one fortis /p/ in a /pul/ syllable and a nonnegative lead",
+    );
+  }
+  const stop = stops[0];
+  const hits = plan.gestures.filter(
+    (g) =>
+      g.label === "p" &&
+      g.t1 > stop.t0 &&
+      g.t1 <= stop.t1 &&
+      (g.targets.lipAp ?? 0) < 0 &&
+      Object.keys(g.targets).length === 1,
+  );
+  if (hits.length !== 1)
+    throw new Error("Expected one isolated lip-aperture gesture");
+  const lip = hits[0],
+    t0 = lip.t0 - leadMs / 1000;
+  const previous = plan.segments[plan.segments.indexOf(stop) - 1];
+  if (previous?.kind !== "vowel" || t0 - lip.rampIn < previous.t0) {
+    throw new Error("Lip movement must start inside the preceding vowel");
+  }
+  return {
+    ...plan,
+    gestures: plan.gestures.map((g) => (g === lip ? { ...g, t0 } : g)),
+  };
 }
 
 function adjust(
@@ -116,7 +157,10 @@ function adjust(
 
 const [jobsFile, out] = process.argv.slice(2);
 const jobs: Job[] = JSON.parse(readFileSync(jobsFile, "utf8"));
-for (const { id, text, voice, fit, lowerOnset } of jobs) {
+for (const { id, text, voice, fit, lowerOnset, lipLeadMs } of jobs) {
+  if (lipLeadMs !== undefined && (!fit || lowerOnset)) {
+    throw new Error("Change only lip timing on a matched voice profile");
+  }
   const poses: Record<string, Partial<HumanArtic>> = {};
   if (fit?.vowels) {
     const model = new VoiceModel(fit.body ?? PRESETS[voice], 48000);
@@ -136,6 +180,7 @@ for (const { id, text, voice, fit, lowerOnset } of jobs) {
       ...fit,
       shapePlan: (original) => {
         const plan = fit.time ? adjust(original, fit, poses) : original;
+        if (lipLeadMs !== undefined) return advanceLipClosure(plan, lipLeadMs);
         if (!lowerOnset) return plan;
         const { vowel, at } = lowerOnset;
         const stop = plan.segments[vowel - 1],
@@ -174,6 +219,18 @@ for (const { id, text, voice, fit, lowerOnset } of jobs) {
   writeFileSync(join(out, id + ".f32"), Buffer.from(take.samples.buffer));
   writeFileSync(
     join(out, id + ".json"),
-    JSON.stringify({ rate: take.rate, segments: take.segments }),
+    JSON.stringify({
+      rate: take.rate,
+      segments: take.segments,
+      lipTrace:
+        lipLeadMs === undefined
+          ? undefined
+          : take.frames.map(({ t }) => ({
+              time: t.clock,
+              apertureCm: t.artic[ARTIC_KEYS.indexOf("lipAp")],
+              outletAreaCm2: t.orAreas[t.orAreas.length - 1],
+              f0: t.f0,
+            })),
+    }),
   );
 }

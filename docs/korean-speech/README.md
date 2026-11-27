@@ -73,6 +73,16 @@ python3 tools/korean/reference_transfer.py --work out/korean-reference --pack pu
 
 `onset-transfer.html`은 로컬에서 여는 24문항 청취판이다. 단독 ‘부’에서는 녹음에 맞춘 기존 F0 목표를 유성 개시 주변에서 최대 3반음 낮춘다. ‘저기 불 보여?’에는 원음이 없어 동일 화자 설정과 같은 질문 억양을 쓰고, 문장 중간 /b/ 다음 /u/에만 상대 피치 제스처를 추가한다. 대조어는 ‘푸·뿌’와 ‘저기 풀/뿔 보여?’다. 발화 앞부분의 PCM 일치, 분절 시점 및 출력 F0를 검사하고, 화자별 수치를 `metrics.json`에 남긴다. 채택한 단독 ‘불’과 전이 시험의 두 맥락은 구분해 평가한다.
 
+### 문장 속 ‘뿔’의 입술 폐쇄
+
+앞의 전이 실험과 같은 화자 프로필 및 대조 WAV를 사용한다. ‘저기 뿔 보여?’에서 ㅃ의 입술 간격 제스처 시작만 40 ms 앞당긴다. 모음·자음 분절의 길이, 입술을 놓는 시각, 성문과 피치 제어는 두 조건에서 같다. 대조 문장 9개는 이전 실험의 WAV와 바이트 단위로 대조한다.
+
+```sh
+python3 tools/korean/reference_fortis.py --pack public/korean-lab/reference-local.json --transfer out/onset-transfer --out out/fortis-closure
+```
+
+생성된 `fortis-closure.html`은 문장 한 개씩을 재생하는 블라인드 청취판이다. 브라우저로 제공하려면 빌드 전에 `public/fortis-closure.html`로 복사한다. 화자별로 기존 ‘불·풀·뿔’과 폐쇄를 연장한 ‘뿔’을 한 번씩 제시한다. `metrics.json`은 실제 구강관 출구 면적이 0인 연속 구간을 사용한다. 양 끝에서는 약 10 ms 간격의 마지막 열린 프레임과 첫 닫힌 프레임 또는 그 반대 순서의 중간 시각을 사용한다. 각 전이의 관측 범위도 함께 기록한다.
+
 ## 듣고 살펴보기
 
 | 재생 순서 | 개선 전 | 개선 후 |

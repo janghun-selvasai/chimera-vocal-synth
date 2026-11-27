@@ -7,6 +7,7 @@ pack as the historical control; the separate proposed pack changes only isolated
 import argparse
 import base64
 import hashlib
+import html
 import io
 import json
 from pathlib import Path
@@ -28,7 +29,14 @@ def load(path):
     return json.loads(path.read_text(encoding="utf8"))
 
 
-def listening_page(out, trials):
+def listening_page(
+    out,
+    trials,
+    *,
+    filename="onset-transfer.html",
+    title="단어와 문장 속 ㅂ",
+    export_name="단어와문장",
+):
     labels = {"male": "남성", "female": "여성", "child": "아동"}
     clips = []
     for trial in trials:
@@ -61,8 +69,11 @@ def listening_page(out, trials):
     template = (
         Path(__file__).with_name("onset_listening.html").read_text(encoding="utf8")
     )
-    (out / "onset-transfer.html").write_text(
-        template.replace("PACK_VERSION", version).replace("AUDIO_BANK", data),
+    (out / filename).write_text(
+        template.replace("STUDY_TITLE", html.escape(title))
+        .replace("EXPORT_NAME", html.escape(export_name, quote=True))
+        .replace("PACK_VERSION", version)
+        .replace("AUDIO_BANK", data),
         encoding="utf8",
     )
 
