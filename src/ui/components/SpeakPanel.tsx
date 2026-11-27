@@ -220,8 +220,11 @@ export function SpeakRight() {
         <Menu
           label="Examples"
           value=""
-          options={[{ value: "", label: "Examples", disabled: true }, ...EXAMPLES[lang].map((ex) => ({ value: ex, label: ex }))]}
-          onChange={(ex) => edit({ text: ex, ipa: false })}
+          options={[{ value: "", label: "Examples", disabled: true }, ...EXAMPLES[lang].map((ex) => ({ value: ex, label: ex })), { value: "korean-lab", label: "한국어 발화 실험 ↗" }]}
+          onChange={(ex) => {
+            if (ex === "korean-lab") window.location.assign("./korean.html");
+            else edit({ text: ex, ipa: false });
+          }}
         />
         )}
         <div className="act-slider">
@@ -264,7 +267,6 @@ export function SpeakRight() {
               </div>
             </div>
           </div>
-          {!inPlugin && <a href="./korean.html">한국어 발화 실험 ↗</a>}
           {inPlugin && <Lines />}
         </div>
       </Screen>

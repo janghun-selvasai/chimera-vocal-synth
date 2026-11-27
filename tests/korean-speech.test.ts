@@ -22,4 +22,3 @@ test("the worklet gesture record carries both Korean release controls into the v
     expect(changed).toBe(true);
   }
 });
-
