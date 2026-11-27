@@ -58,8 +58,13 @@ pub fn marked_ipa(s: &Segment) -> Option<String> {
 fn connected(words: &[String], clear: bool) -> Vec<Syllable> {
     let mut blocks = Vec::new();
     let mut ends = Vec::new();
-    for w in words {
+    for (i, w) in words.iter().enumerate() {
+        let start = blocks.len();
         blocks.extend(w.chars().map(decompose));
+        super::morphology::within_word(&mut blocks[start..]);
+        if i > 0 && super::morphology::adnominal_tensing(&words[i - 1], w) {
+            blocks[start].onset = blocks[start].onset.map(super::tense);
+        }
         ends.push(blocks.len() - 1);
     }
     // At a lexical word boundary a coda before an independent vowel-initial word

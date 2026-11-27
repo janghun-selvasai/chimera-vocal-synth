@@ -169,6 +169,50 @@ fn predicate_lg_depends_on_the_stem_and_the_following_sound() {
 }
 
 #[test]
+fn standard_fifty_matches_independent_surface_phones() {
+    let corpus: serde_json::Value = serde_json::from_str(include_str!("korean-standard-50.json")).unwrap();
+    let mut total = 0;
+    for group in corpus["groups"].as_object().unwrap().values() {
+        for case in group.as_array().unwrap() {
+            let input = case[0].as_str().unwrap();
+            let phones: Vec<String> = phrases(input).into_iter().flat_map(|phrase| {
+                plan_utterance(&phrase.segments, &PlanOptions::default()).segments.into_iter()
+                    .map(|s| s.display_ipa.unwrap_or(s.ipa))
+            }).collect();
+            assert_eq!(phones.join(" "), case[2].as_str().unwrap(), "{input}");
+            total += 1;
+        }
+    }
+    assert_eq!(total, 50);
+}
+
+#[test]
+fn morpheme_rules_extend_to_new_forms_and_respect_counterexamples() {
+    let phones = |text: &str| {
+        phrases(text).into_iter().map(|p| p.segments.into_iter()
+            .map(|s| s.display_ipa.unwrap_or(s.ipa)).collect::<Vec<_>>()).collect::<Vec<_>>()
+    };
+    for (text, reference) in [
+        ("겉옷을", "거도슬"), ("덧옷", "더돋"), ("막일", "망닐"), ("한여름", "한녀름"),
+        ("꽃잎이", "꼰니피"), ("입원료", "이붠뇨"), ("분량", "불량"), ("대혼란", "대홀란"),
+        ("얹히다", "언치다"), ("넓혀", "널펴"), ("넓둥글다", "넙뚱글다"),
+        ("다듬고", "다듬꼬"), ("앉거든", "안꺼든"), ("앉습니다", "안씀니다"), ("훑소", "훌쏘"),
+        ("굶기다", "굼기다"),
+        ("먹을 것을", "머글 꺼슬"), ("올 데가", "올 떼가"),
+        ("확인", "화긴"), ("꽃이", "꼬치"),
+    ] {
+        assert_eq!(phones(text), phones(reference), "{text}");
+    }
+    // Literal controls detect an overapplied rule even when both spellings are identical.
+    for (text, expected) in [
+        ("남기다", "n a m g i d a"), ("삼국", "s a m g u k"), ("서울 시내", "s ʌ u l ɕ i n ɛ"),
+        ("갈, 데가", "k a l | t e g a"), ("할, 수 있다", "h a l | s u i t t͈ a"),
+    ] {
+        assert_eq!(phones(text).iter().map(|p| p.join(" ")).collect::<Vec<_>>().join(" | "), expected, "{text}");
+    }
+}
+
+#[test]
 fn matched_ablation_changes_only_selected_gestures() {
     for text in ["불", "풀", "뿔", "달", "탈", "딸"] {
         let plans: Vec<_> = [Condition::Vot, Condition::Pitch, Condition::Full]

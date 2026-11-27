@@ -16,6 +16,7 @@
 //! are joined into the block first. The letters modern Korean dropped (ㆍ ㅿ ㆁ ㆆ) have no block,
 //! so a block with one isn't read, like any other script no front end reads.
 
+mod morphology;
 pub mod speech;
 
 use super::syllables::FrontEnd;
@@ -185,6 +186,14 @@ fn join(a: &mut Block, b: &mut Block, inside_word: bool) {
             return;
         }
     }
+    // In an attached -히- (or contracted 혀/혔), the trailing ㅈ or ㅂ
+    // of a cluster meets ㅎ before the coda can simplify (앉히다, 넓혀).
+    let hi_suffix = inside_word && b.onset == Some('ㅎ')
+        && matches!((b.glide, b.vowel), ("", "i") | ("j", "ʌ"));
+    if hi_suffix && matches!(a.coda.as_slice(), ['ㄴ', 'ㅈ'] | ['ㄹ', 'ㅂ']) {
+        b.onset = aspirated(a.coda.pop().unwrap());
+        return;
+    }
     if inside_word && lg_predicate_stem(a.text) {
         // Rule 11: retain ㄹ and tense the following ㄱ (읽고, 밝기).
         // Attached -히- also retains ㄹ while ㄱ+ㅎ gives ㅋ, including
@@ -321,7 +330,8 @@ fn pronounced_blocks(mut blocks: Vec<Block>, word_ends: &[usize]) -> Vec<Block> 
     blocks
 }
 
-fn syllables_from_blocks(blocks: Vec<Block>) -> Vec<Syllable> {
+fn syllables_from_blocks(mut blocks: Vec<Block>) -> Vec<Syllable> {
+    morphology::within_word(&mut blocks);
     syllables_from_pronounced(&pronounced_blocks(blocks, &[]))
 }
 

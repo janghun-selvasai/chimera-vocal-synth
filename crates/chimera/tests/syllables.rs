@@ -95,6 +95,17 @@ fn korean_stem_exceptions_preserve_liaison_and_unrelated_clusters() {
 }
 
 #[test]
+fn korean_lyrics_share_within_word_morpheme_rules() {
+    for (word, surface) in [
+        ("겉옷", "거돋"), ("앉히다", "안치다"), ("더듬지", "더듬찌"),
+        ("생산량", "생산냥"), ("꽃잎", "꼰닙"),
+    ] {
+        assert_eq!(sung(word), sung(surface), "{word}");
+    }
+    assert_eq!(sung("안기다"), "an.gi.da");
+}
+
+#[test]
 fn hangul_sings_one_syllable_per_block_with_korean_sound_rules() {
     assert_eq!(sung("빵야"), "p˭aŋ.ja"); // ㅇ coda stays; tense ㅃ is voiceless and unaspirated
     assert_eq!(sung("먹어"), "mʌ.gʌ"); // a coda moves onto a silent ㅇ, voiced between vowels
