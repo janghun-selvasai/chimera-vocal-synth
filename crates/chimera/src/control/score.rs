@@ -26,9 +26,11 @@ pub enum SourceKey {
     F0,
     /// vibrato depth (cents): singers let it bloom a few hundred ms into a held note
     Vibrato,
+    PitchSt,
+    Press,
 }
 
-pub const N_SOURCE: usize = 5;
+pub const N_SOURCE: usize = 7;
 /// Articulators then source channels.
 pub const N_CONTROL: usize = N_ARTIC + N_SOURCE;
 
@@ -39,13 +41,15 @@ pub enum ControlKey {
     Source(SourceKey),
 }
 
-pub const SOURCE_NAMES: [&str; N_SOURCE] = ["abduction", "closure", "breath", "f0", "vibrato"];
+pub const SOURCE_NAMES: [&str; N_SOURCE] = ["abduction", "closure", "breath", "f0", "vibrato", "pitchSt", "press"];
 
 impl ControlKey {
     pub const ABDUCTION: ControlKey = ControlKey::Source(SourceKey::Abduction);
     pub const CLOSURE: ControlKey = ControlKey::Source(SourceKey::Closure);
     pub const BREATH: ControlKey = ControlKey::Source(SourceKey::Breath);
     pub const F0: ControlKey = ControlKey::Source(SourceKey::F0);
+    pub const PITCH_ST: ControlKey = ControlKey::Source(SourceKey::PitchSt);
+    pub const PRESS: ControlKey = ControlKey::Source(SourceKey::Press);
     pub const VIBRATO: ControlKey = ControlKey::Source(SourceKey::Vibrato);
 
     #[inline]
@@ -59,7 +63,7 @@ impl ControlKey {
         if i < N_ARTIC {
             ControlKey::Artic(ArticKey::ALL[i])
         } else {
-            ControlKey::Source([SourceKey::Abduction, SourceKey::Closure, SourceKey::Breath, SourceKey::F0, SourceKey::Vibrato][i - N_ARTIC])
+            ControlKey::Source([SourceKey::Abduction, SourceKey::Closure, SourceKey::Breath, SourceKey::F0, SourceKey::Vibrato, SourceKey::PitchSt, SourceKey::Press][i - N_ARTIC])
         }
     }
     pub fn name(self) -> &'static str {

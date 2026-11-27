@@ -245,6 +245,8 @@ pub struct HumanVoice {
     blend: [Blended; N_CONTROL],
     base_abduction: f64,
     base_closure: f64,
+    modal_oq: f64,
+    modal_sharpness: f64,
     score_f0: Option<f64>,
     lim_env: f64,
     lim_hold: i64,
@@ -312,6 +314,8 @@ impl HumanVoice {
             blend: [Blended::default(); N_CONTROL],
             base_abduction: 0.0,
             base_closure: 0.0,
+            modal_oq: 0.0,
+            modal_sharpness: 0.0,
             score_f0: None,
             lim_env: 0.0,
             lim_hold: 0,
@@ -406,6 +410,8 @@ impl HumanVoice {
         let bright = s.brightness - DEFAULT_SOURCE.brightness;
         let by_tension = 0.4 * s.tension + 1.375 * js_max(0.0, s.tension - 0.6);
         g.closure_sharpness = clamp(by_tension + 0.8 * bright, 0.0, 1.0);
+        self.modal_oq = g.open_quotient;
+        self.modal_sharpness = g.closure_sharpness;
         g.skew = 0.56 + 0.16 * s.tension + 0.2 * bright;
         g.fry = s.fry;
         // Jitter of a healthy, trained voice at the default roughness (0.1): about 0.45 %, well
@@ -515,6 +521,7 @@ impl HumanVoice {
         let t = self.clock;
         let mut breath_act = 0.0;
         let mut breath_val = 0.0;
+        let mut press = 0.0;
         let mut f0_target = self.source.f0;
         if self.score.size() > 0 {
             self.score.blend_all(t, &mut self.blend);
@@ -542,6 +549,12 @@ impl HumanVoice {
             } else {
                 self.score_f0 = None;
             }
+            let st = b[ControlKey::PITCH_ST.index()];
+            if st.weight > 0.0 {
+                f0_target *= pow(2.0, st.value * js_min(1.0, st.weight) / 12.0);
+            }
+            let p = b[ControlKey::PRESS.index()];
+            press = clamp(p.value * js_min(1.0, p.weight), 0.0, 1.0);
             if js_trunc_i32(self.clock * 10.0) != js_trunc_i32((self.clock - dt) * 10.0) {
                 self.score.prune(t - 0.2);
             }
@@ -551,6 +564,8 @@ impl HumanVoice {
             self.glottis.params.closure = self.base_closure;
             self.score_f0 = None;
         }
+        self.glottis.params.open_quotient = (self.modal_oq - 0.14 * press).max(0.2);
+        self.glottis.params.closure_sharpness = (self.modal_sharpness + 0.45 * press).min(1.0);
         self.clock += dt;
         // contact constraint on the frame computed anyway; re-apply only if a correction was made
         let x = self.artic.x;

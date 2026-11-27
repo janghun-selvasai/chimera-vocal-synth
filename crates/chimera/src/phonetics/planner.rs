@@ -273,6 +273,8 @@ pub struct TimedSegment<'a> {
     pub f0: Option<f64>,
     pub aspirated: Option<bool>,
     pub vot: Option<f64>,
+    pub onset_st: Option<f64>,
+    pub pressed_release: bool,
     pub nasalized: Option<bool>,
     pub palatalized: Option<bool>,
     pub breathy: Option<bool>,
@@ -298,6 +300,8 @@ struct Seg<'a> {
     glide_from: bool,
     aspirated: Option<bool>,
     vot: Option<f64>,
+    onset_st: Option<f64>,
+    pressed_release: bool,
     nasalized: Option<bool>,
     palatalized: Option<bool>,
     breathy: Option<bool>,
@@ -366,6 +370,8 @@ pub fn plan_utterance(input: &[Segment], o: &PlanOptions) -> Plan {
         f0: s.f0,
         aspirated: s.aspirated,
         vot: s.vot,
+        onset_st: s.onset_st,
+        pressed_release: s.pressed_release,
         nasalized: s.nasalized,
         palatalized: s.palatalized,
         breathy: s.breathy,
@@ -398,10 +404,10 @@ pub fn plan_timed<'a>(input: impl Iterator<Item = TimedSegment<'a>>, o: &PlanOpt
             };
             for (i, p) in parts.iter().enumerate() {
                 let dur = base * shares.get(i).copied().unwrap_or(1.0);
-                segs.push(Seg { ipa: p, dur, stress: s.stress, f0: s.f0, def: None, vowel: None, glide_from: i > 0, aspirated: None, vot: None, nasalized: s.nasalized, palatalized: None, breathy: s.breathy, glide: None });
+                segs.push(Seg { ipa: p, dur, stress: s.stress, f0: s.f0, def: None, vowel: None, glide_from: i > 0, aspirated: None, vot: None, onset_st: None, pressed_release: false, nasalized: s.nasalized, palatalized: None, breathy: s.breathy, glide: None });
             }
         } else {
-            segs.push(Seg { ipa: s.ipa, dur: s.dur, stress: s.stress, f0: s.f0, def: None, vowel: None, glide_from: false, aspirated: s.aspirated, vot: s.vot, nasalized: s.nasalized, palatalized: s.palatalized, breathy: s.breathy, glide: s.glide });
+            segs.push(Seg { ipa: s.ipa, dur: s.dur, stress: s.stress, f0: s.f0, def: None, vowel: None, glide_from: false, aspirated: s.aspirated, vot: s.vot, onset_st: s.onset_st, pressed_release: s.pressed_release, nasalized: s.nasalized, palatalized: s.palatalized, breathy: s.breathy, glide: s.glide });
         }
     }
     for s in segs.iter_mut() {
@@ -589,6 +595,17 @@ pub fn plan_timed<'a>(input: impl Iterator<Item = TimedSegment<'a>>, o: &PlanOpt
             // the closure and fades there, and the frication is as loud and as voiceless as /tʃ/'s
             // (hill-climb log, experiment 29). So the same folds, parted only for the release.
             gestures.push(affricate_folds(t0 + dur * AFFRICATE_CLOSURE, t1).label("voiced affricate"));
+        }
+        // VOT is still made by abduction above. These independent source gestures
+        // overlap the beginning of phonation, then yield to the phrase contour.
+        let next_end = times.get(i + 1).map_or(t1, |span| span.t1);
+        if let Some(st) = s.onset_st {
+            let hold = js_min(next_end, t1 + (s.vot.unwrap_or(0.012) + 0.034) / rate);
+            gestures.push(Gesture::new(t1, hold, 0.028, 0.046, 1.0, one(ControlKey::PITCH_ST, st)).label("release pitch"));
+        }
+        if s.pressed_release {
+            let hold = js_min(next_end, t1 + 0.045 / rate);
+            gestures.push(Gesture::new(t1, hold, 0.008, 0.030, 1.0, one(ControlKey::PRESS, 1.0)).label("pressed release"));
         }
         // a breathy-voiced release (Hindi bʱ): the folds part as the closure lets go and stay
         // apart into the start of the vowel

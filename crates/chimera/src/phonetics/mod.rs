@@ -47,6 +47,12 @@ pub struct Segment {
     /// decides it (Korean's lax stops aspirate briefly, its aspirated ones long); None: 50 ms
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vot: Option<f64>,
+    /// Relative pitch at this stop's release, in semitones above the phrase contour.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub onset_st: Option<f64>,
+    /// A short pressed pulse shape following a fortis release.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub pressed_release: bool,
     /// a vowel said with the velum lowered (IPA combining tilde); None or false: oral
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub nasalized: Option<bool>,

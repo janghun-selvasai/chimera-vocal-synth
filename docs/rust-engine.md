@@ -143,10 +143,10 @@ consumption or sums (noise sources, gestures). It retunes nothing. The checks:
     up to 4 096 frames, a command scratch area, and the telemetry block. JS re-creates its
     typed-array views whenever `memory.buffer` has changed, and copies telemetry before the
     next call.
-  - Gestures cross as fixed 256-byte little-endian records, layout version 1, specified in
-    `crates/chimera-wasm/src/lib.rs` and mirrored by `src/engine/wire.ts`:
+  - Gestures cross as fixed 288-byte little-endian records, layout version 2, specified in
+    `crates/chimera-wasm/src/lib.rs` and mirrored by `src/wasm/wire.ts`:
     - eight `f64`s: t0, t1, rampIn, rampOut, strength, speed, releaseHold, tag;
-    - 22 `f64` targets in `ControlKey` order;
+    - 24 `f64` targets in `ControlKey` order;
     - a u8 label length and 24 bytes of UTF-8;
     - padding.
 

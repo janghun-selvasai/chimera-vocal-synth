@@ -1,6 +1,6 @@
 /** Engine types as the UI sees them (the JSON shapes of the Rust engine's serde types). */
 export type ArticKey = "jaw" | "tbX" | "tbY" | "ttX" | "ttY" | "ttCurl" | "root" | "lipAp" | "lipProt" | "lipWidth" | "labiodental" | "velum" | "larynx" | "epilarynx" | "ventricular" | "lateral" | "dorsum";
-export type SourceKey = "abduction" | "closure" | "breath" | "f0" | "vibrato";
+export type SourceKey = "abduction" | "closure" | "breath" | "f0" | "vibrato" | "pitchSt" | "press";
 export type ControlKey = ArticKey | SourceKey;
 
 export interface Gesture {
@@ -163,6 +163,8 @@ export interface Segment {
   aspirated?: boolean;
   /** how long an aspirated stop aspirates (s); unset: 50 ms */
   vot?: number;
+  onsetSt?: number;
+  pressedRelease?: boolean;
   /** a vowel said with the velum lowered (IPA combining tilde) */
   nasalized?: boolean;
   /** a consonant with a secondary palatal gesture, the tongue body raised and fronted (IPA ʲ) */

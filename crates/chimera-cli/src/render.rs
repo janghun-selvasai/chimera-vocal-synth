@@ -184,7 +184,18 @@ pub fn say(g: &EnglishG2P, text: &str, body_name: &str) -> Result<Spoken, String
 
 /// Say phrases from any G2P the way `render text` does (see [`say`]).
 pub fn say_phrases(phrases: &[Phrase], body_name: &str) -> Result<Spoken, String> {
-    let b = body(body_name)?;
+    let (plan, shown) = speech_plan(phrases, body_name)?;
+    let mut voice = HumanVoice::new(FS, body(body_name)?, 2);
+    voice.set_source(&SourcePatch::f0(text_f0(body_name)));
+    voice.schedule(&plan.gestures);
+    let total = js_round(FS * (plan.end + 0.3)) as usize;
+    let mut out = vec![0f32; total];
+    render_blocks(&mut voice, &mut out);
+    Ok(Spoken { out, plan, shown })
+}
+
+fn speech_plan(phrases: &[Phrase], body_name: &str) -> Result<(Plan, String), String> {
+    body(body_name)?;
     let f0 = text_f0(body_name);
     let shown: Vec<String> = phrases
         .iter()
@@ -201,8 +212,6 @@ pub fn say_phrases(phrases: &[Phrase], body_name: &str) -> Result<Spoken, String
             }
         })
         .collect();
-    let mut voice = HumanVoice::new(FS, b, 2);
-    voice.set_source(&SourcePatch::f0(f0));
     let inputs: Vec<PhraseInput> = phrases
         .iter()
         .map(|p| PhraseInput {
@@ -220,11 +229,7 @@ pub fn say_phrases(phrases: &[Phrase], body_name: &str) -> Result<Spoken, String
             ..Default::default()
         },
     );
-    voice.schedule(&plan.gestures);
-    let total = js_round(FS * (plan.end + 0.3)) as usize;
-    let mut out = vec![0f32; total];
-    render_blocks(&mut voice, &mut out);
-    Ok(Spoken { out, plan, shown: shown.join(" | ") })
+    Ok((plan, shown.join(" | ")))
 }
 
 /// English text through G2P and the phrase planner. `render text <out> ["Text."] [body]`
@@ -251,9 +256,47 @@ pub fn korean(ctx: &Ctx, a: &[String]) -> Result<(), String> {
     use chimera::phonetics::korean::speech;
     let text = arg(a, 1, "불·풀·뿔");
     if !speech::is_korean_text(text) { return Err("expected a Hangul utterance".into()); }
-    let s = say_phrases(&speech::phrases(text), arg(a, 2, "male"))?;
-    println!("{}", s.shown);
-    ctx.write_wav(&wav_name(arg(a, 0, "out/korean")), &s.out)
+    let trace = a.last().is_some_and(|arg| arg == "--trace");
+    let args = &a[..a.len() - usize::from(trace)];
+    if args.len() > 4 { return Err("render korean <out> <text> [body] [condition] [--trace]".into()); }
+    let body_name = arg(args, 2, "male");
+    let condition: speech::Condition = serde_json::from_value(arg(args, 3, "full").into())
+        .map_err(|e| e.to_string())?;
+    let phrases = speech::phrases_with(text, condition);
+    let (plan, shown) = speech_plan(&phrases, body_name)?;
+    let mut voice = HumanVoice::new(FS, body(body_name)?, 2);
+    voice.set_source(&SourcePatch::f0(text_f0(body_name)));
+    voice.schedule(&plan.gestures);
+    let mut out = vec![0.0; js_round(FS * (plan.end + 0.3)) as usize];
+    let wav = wav_name(arg(args, 0, "out/korean"));
+    if trace {
+        let stem = wav.strip_suffix(".wav").unwrap();
+        let mut tele = TeleRecorder::new(&mut voice);
+        // 1 ms probes resolve release and the first cycle more finely than the replay track.
+        let hop = (FS / 1000.0) as usize;
+        let mut probes = Vec::new();
+        let mut sample = 0;
+        for frame in out.chunks_mut(hop) {
+            let g = &voice.glottis;
+            let area = voice.airway.or_areas.iter().copied().fold(f64::INFINITY, f64::min);
+            probes.push([sample as f64 / FS, area, g.voicing, g.cycle_phase(), g.area,
+                g.params.open_quotient, g.params.closure_sharpness, g.f0_now]);
+            voice.render(frame);
+            sample += frame.len();
+            if sample % TELE_HOP == 0 { tele.snap(&mut voice)?; }
+        }
+        ctx.write_wav(&wav, &out)?;
+        let meta = serde_json::json!({"text":text,"condition":condition,"body":body_name,
+            "rate":1,"sampleRate":FS,"baseF0":text_f0(body_name),"phrases":phrases,"plan":plan,
+            "columns":["seconds","minOralCm2","voicing","phase","glottalCm2","oqControl","sharpnessControl","modelHz"],"probes":probes});
+        std::fs::write(format!("{stem}.json"), meta.to_string()).map_err(|e| e.to_string())?;
+        std::fs::write(format!("{stem}.tele"), tele.bytes(body_mix(body_name)?)).map_err(|e| e.to_string())?;
+    } else {
+        render_blocks(&mut voice, &mut out);
+        ctx.write_wav(&wav, &out)?;
+    }
+    println!("{shown} -> {wav}");
+    Ok(())
 }
 
 /// Turkish text through its spelling rules and the phrase planner.

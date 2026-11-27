@@ -7,7 +7,7 @@
 //! obstruent coda.
 //!
 //! Stops say their own aspiration (Segment::aspirated): aspirated ㅋ ㅌ ㅍ ㅊ are aspirated, and
-//! tense ㄲ ㄸ ㅃ ㅉ are voiceless and unaspirated (the engine has no stiff "fortis" phonation yet).
+//! tense ㄲ ㄸ ㅃ ㅉ are voiceless and unaspirated (Speak can also press the following vowel briefly).
 //! Lax stops aspirate briefly word-initially and aspirated ones long (Segment::vot); lax stops are
 //! voiced between voiced sounds.
 //! ㅈ ㅊ ㅉ are alveolo-palatal [tɕ], and ㅅ ㅆ before [i] or [j] are [ɕ].
@@ -277,7 +277,10 @@ fn coda_ipa(c: char) -> &'static str {
 
 /// One word of Hangul (a run of blocks) → its sung syllables, the last marked as the word's end.
 pub fn word_syllables(word: &str) -> Vec<Syllable> {
-    let mut blocks: Vec<Block> = compose(word).chars().filter(|&c| is_hangul(c)).map(decompose).collect();
+    syllables_from_blocks(compose(word).chars().filter(|&c| is_hangul(c)).map(decompose).collect())
+}
+
+fn syllables_from_blocks(mut blocks: Vec<Block>) -> Vec<Syllable> {
     for i in 1..blocks.len() {
         let (l, r) = blocks.split_at_mut(i);
         join(l.last_mut().unwrap(), &mut r[0]);
