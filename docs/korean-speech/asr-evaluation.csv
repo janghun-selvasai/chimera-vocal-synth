@@ -1,0 +1,35 @@
+﻿id,condition,reference,whisper,exact_match
+bul,baseline,불,(뿌리),0
+bul,vot,불,(뿌리),0
+bul,pitch,불,(뿌리),0
+bul,full,불,(뿌리),0
+pul,baseline,풀,(끄덕끄덕),0
+pul,vot,풀,푸르,0
+pul,pitch,풀,(뿌리),0
+pul,full,풀,(뿌리),0
+ppul,baseline,뿔,(끝),0
+ppul,vot,뿔,(뿌리),0
+ppul,pitch,뿔,(뿌리),0
+ppul,full,뿔,(뿌리),0
+dal,baseline,달,탈...,0
+dal,vot,달,탈...,0
+dal,pitch,달,탈...,0
+dal,full,달,탈...,0
+tal,baseline,탈,탈...,1
+tal,vot,탈,탈...,1
+tal,pitch,탈,탈...,1
+tal,full,탈,탈...,1
+ttal,baseline,딸,뷔타ㄹ,0
+ttal,vot,딸,[끝],0
+ttal,pitch,딸,(끄덕),0
+ttal,full,딸,(끝),0
+statement,baseline,불이 보여.,불이 포야!,0
+statement,full,불이 보여.,부리보여,0
+question,baseline,불이 보여?,불이 포야!,0
+question,full,불이 보여?,부리보여,0
+comma,baseline,"먹어, 같이 먹어.",마가 택시 마가,0
+comma,full,"먹어, 같이 먹어.",마가... 카치 마가...,0
+inside,baseline,이 불이 보여.,에이프리포이야,0
+inside,full,이 불이 보여.,삐 부리 보여,0
+rules,baseline,같이 국물을 먹어.,택시 공물을 마가...,0
+rules,full,같이 국물을 먹어.,탁시쿵무룰마가...,0
