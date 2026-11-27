@@ -247,6 +247,15 @@ pub fn text(ctx: &Ctx, a: &[String]) -> Result<(), String> {
     Ok(())
 }
 
+pub fn korean(ctx: &Ctx, a: &[String]) -> Result<(), String> {
+    use chimera::phonetics::korean::speech;
+    let text = arg(a, 1, "불·풀·뿔");
+    if !speech::is_korean_text(text) { return Err("expected a Hangul utterance".into()); }
+    let s = say_phrases(&speech::phrases(text), arg(a, 2, "male"))?;
+    println!("{}", s.shown);
+    ctx.write_wav(&wav_name(arg(a, 0, "out/korean")), &s.out)
+}
+
 /// Turkish text through its spelling rules and the phrase planner.
 /// `render turkish <out> ["Türkçe metin."] [body]`
 pub fn turkish(ctx: &Ctx, a: &[String]) -> Result<(), String> {

@@ -169,6 +169,10 @@ export function turkishPhrases(text: string): Phrase[] {
   return call("trPhrases", { text });
 }
 
+export function koreanPhrases(text: string): Phrase[] {
+  return call("koPhrases", { text });
+}
+
 // ------------------------------------------------------------------ planning
 
 export interface PlanOptions {

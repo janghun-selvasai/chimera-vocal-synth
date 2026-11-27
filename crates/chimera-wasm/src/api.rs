@@ -138,6 +138,7 @@ fn dispatch(st: &mut State, req: &Value) -> Res {
         // Latin-script words; unset: English), Korean, Russian, and Mandarin once its lexicon is loaded
         "lyricsToSyllables" => to_json(&lyrics_in(&arg::<String>(req, "text")?, &st.g2p, &st.mandarin, arg::<Option<Lang>>(req, "lang")?.unwrap_or_default())),
         // Turkish needs no dictionary: its spelling rules are the G2P
+        "koPhrases" => to_json(&chimera::phonetics::korean::speech::phrases(&arg::<String>(req, "text")?)),
         "trPhrases" => to_json(&turkish::to_phrases(&arg::<String>(req, "text")?)),
         // ---------------------------------------------------------------- creatures
         "creaturePreview" => {

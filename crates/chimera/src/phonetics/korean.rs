@@ -16,6 +16,8 @@
 //! are joined into the block first. The letters modern Korean dropped (ㆍ ㅿ ㆁ ㆆ) have no block,
 //! so a block with one isn't read, like any other script no front end reads.
 
+pub mod speech;
+
 use super::syllables::FrontEnd;
 use super::{Segment, Syllable};
 

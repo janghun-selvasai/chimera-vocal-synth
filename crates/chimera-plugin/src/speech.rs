@@ -50,7 +50,7 @@ fn plan(text: &str, phrases: Vec<Phrase>, body: BodyMix, rate: f64) -> SpokenLin
 pub fn plan_lines(s: &SpeechSettings, body: BodyMix, g2p: &EnglishG2P) -> Vec<SpokenLine> {
     let mut lines = Vec::new();
     for line in s.text.lines().map(str::trim).filter(|l| !l.is_empty()) {
-        let phrases = if s.ipa { ipa_phrases(line) } else { g2p.to_phrases(line) };
+        let phrases = if s.ipa { ipa_phrases(line) } else if chimera::phonetics::korean::speech::is_korean_text(line) { chimera::phonetics::korean::speech::phrases(line) } else { g2p.to_phrases(line) };
         if !phrases.is_empty() {
             lines.push(plan(line, phrases, body, s.rate));
         }
