@@ -74,7 +74,7 @@ button:focus-visible,
 select:focus-visible {
   border-color: var(--mint);
 }
-button[aria-pressed="true"] {
+button[aria-selected="true"] {
   background: var(--mint);
   color: #112621;
   font-weight: 700;
@@ -214,6 +214,218 @@ input[type="range"] {
 }
 #listener .actions {
   margin: 12px 0;
+}
+.studio {
+  display: grid;
+  grid-template-columns: minmax(0, 0.83fr) minmax(0, 1.17fr);
+  margin: 22px 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #14212a;
+}
+nav[role="tablist"] {
+  gap: 4px;
+  padding: 2px 0 0;
+}
+nav [role="tab"] {
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 12px 15px;
+}
+nav [role="tab"][aria-selected="true"] {
+  border-color: var(--mint);
+  background: transparent;
+  color: var(--mint);
+}
+:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+.composer {
+  padding: clamp(20px, 3vw, 34px);
+}
+.field-title {
+  margin: 3px 0 18px;
+  font-size: 21px;
+  font-weight: 700;
+  color: #eff4f6;
+  letter-spacing: -0.045em;
+}
+.composer textarea,
+.composer input {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #506473;
+  border-radius: 8px;
+  background: #0b151d;
+  color: #f4f8f8;
+  font: inherit;
+  font-size: 19px;
+  line-height: 1.65;
+}
+.composer textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+.composer input {
+  font-size: 24px;
+}
+.composer [aria-invalid="true"] {
+  border-color: #ffaaa3;
+}
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 12px 0 20px;
+}
+.suggestions button {
+  border: 1px solid #435361;
+  color: #cbd6db;
+  background: transparent;
+  border-radius: 22px;
+  font-size: 13px;
+  padding: 4px 10px;
+}
+.suggestions button:hover {
+  border-color: var(--mint);
+  color: var(--mint);
+}
+.hint {
+  font-size: 14px;
+  margin: 18px 0 24px;
+  max-width: 32em;
+}
+.transport {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 24px;
+}
+.transport button {
+  min-height: 43px;
+  border-radius: 7px;
+  padding-inline: 17px;
+}
+.transport .primary {
+  background: var(--mint);
+  color: #09261f;
+  border-color: var(--mint);
+  font-weight: 750;
+}
+.primary span {
+  font-size: 11px;
+  margin-right: 5px;
+}
+.transport .stop {
+  background: transparent;
+}
+.run-status {
+  min-height: 1.55em;
+  margin-top: 13px;
+  color: #c8e6dd;
+  font-size: 14px;
+}
+.mouth-stage {
+  margin: 0;
+  min-width: 0;
+  background: #09131b;
+  border-left: 1px solid var(--line);
+}
+.mouth-stage figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 15px 20px;
+  border-bottom: 1px solid #283a47;
+}
+.mouth-stage h2 {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: -0.035em;
+}
+#stage-state {
+  color: var(--mint);
+  font-size: 13px;
+}
+#live-head {
+  height: clamp(285px, 36vh, 400px);
+  background: radial-gradient(circle at center, #1e343f 1px, transparent 1px)
+    50% 50% / 22px 22px;
+}
+.stage-footer {
+  padding: 12px 20px 17px;
+  border-top: 1px solid #283a47;
+}
+#live-phones {
+  max-height: 4.8em;
+  overflow-y: auto;
+  margin: 0 0 10px;
+  color: #b4c4cf;
+  font-size: 14px;
+}
+#live-phones span {
+  display: inline-block;
+  margin-right: 0.46em;
+  padding: 1px 2px;
+}
+#live-phones .active {
+  color: #071b15;
+  background: var(--mint);
+  border-radius: 3px;
+}
+#stage-progress {
+  height: 3px;
+  background: #263744;
+}
+#stage-progress i {
+  display: block;
+  height: 100%;
+  width: var(--progress, 0%);
+  background: var(--mint);
+}
+@media (max-width: 690px) {
+  .studio {
+    grid-template-columns: 1fr;
+    margin: 14px 0;
+  }
+  .composer {
+    padding: 18px;
+  }
+  .field-title {
+    margin: 0 0 10px;
+    font-size: 18px;
+  }
+  .suggestions {
+    margin: 8px 0 12px;
+  }
+  .transport {
+    margin-top: 14px;
+  }
+  .run-status:empty {
+    min-height: 0;
+    margin: 0;
+  }
+  .mouth-stage {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+  #live-head {
+    height: 245px;
+  }
+  nav[role="tablist"] {
+    gap: 0;
+  }
+  nav [role="tab"] {
+    padding: 10px 7px;
+    font-size: 13px;
+  }
 }
 .sr {
   position: absolute;

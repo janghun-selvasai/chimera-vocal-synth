@@ -141,11 +141,10 @@ function timeline(take: Take, t: number) {
   g.fillRect(x(t), 3, 1.5, 148);
 }
 
-async function main() {
-  const embedded = (id: string) =>
-    document.getElementById(id)?.textContent?.trim();
-  const wasm = embedded("engine-data");
-  await initChimera(wasm ? bytes(wasm) : undefined);
+const embedded = (id: string) =>
+  document.getElementById(id)?.textContent?.trim();
+
+async function loadComparison() {
   const packed = embedded("session-data");
   const raw = packed
     ? new Blob([bytes(packed)])
@@ -315,20 +314,89 @@ async function main() {
     files.value = "";
   };
   const stopBlind = setupListening(session);
-  function view(blind: boolean) {
-    audio.pause();
-    stopBlind();
-    get("explorer").hidden = blind;
-    get("listener").hidden = !blind;
-    get("explore").setAttribute("aria-pressed", String(!blind));
-    get("blind").setAttribute("aria-pressed", String(blind));
-    if (!blind) draw(true);
-  }
-  get("blind").onclick = () => view(true);
-  get("explore").onclick = () => view(false);
-  get("status").hidden = true;
-  get("explorer").hidden = false;
   chooseWord();
+  return {
+    stop() {
+      audio.pause();
+      stopBlind();
+    },
+    redraw() {
+      draw(true);
+    },
+  };
+}
+
+async function main() {
+  const wasm = embedded("engine-data");
+  await initChimera(wasm ? bytes(wasm) : undefined);
+  const { setupStudio } = await import("./studio.ts");
+  const studio = setupStudio();
+  const tabs = Array.from(
+    document.querySelectorAll<HTMLButtonElement>('nav [role="tab"]'),
+  );
+  const status = get("status");
+  let comparison: Awaited<ReturnType<typeof loadComparison>> | undefined;
+  let loading: ReturnType<typeof loadComparison> | undefined;
+  let navigation = 0;
+  async function select(id: string) {
+    const current = ++navigation;
+    studio.stop();
+    comparison?.stop();
+    for (const tab of tabs) {
+      const selected = tab.id === id;
+      tab.setAttribute("aria-selected", String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+      get(tab.getAttribute("aria-controls")!).hidden = !selected;
+    }
+    status.hidden = true;
+    if (id === "tts" || id === "prepare") {
+      studio.show(id);
+      return;
+    }
+    if (!comparison) {
+      get("explorer").hidden = get("listener").hidden = true;
+      status.hidden = false;
+      status.textContent = "비교 음원을 여는 중…";
+      try {
+        comparison = await (loading ??= loadComparison());
+      } catch {
+        loading = undefined;
+        if (current === navigation)
+          status.textContent =
+            "비교 음원을 열 수 없습니다. 탭을 눌러 다시 시도해 주세요.";
+        return;
+      }
+      if (current !== navigation) return;
+      status.hidden = true;
+      get(id === "explore" ? "explorer" : "listener").hidden = false;
+    }
+    if (id === "explore") comparison.redraw();
+  }
+  const fromHash = () =>
+    tabs.find((b) => "#" + b.id === location.hash)?.id ?? "tts";
+  for (const [i, tab] of tabs.entries()) {
+    tab.onclick = () => {
+      if (location.hash === "#" + tab.id) void select(tab.id);
+      else location.hash = tab.id;
+    };
+    tab.onkeydown = (e) => {
+      const n = tabs.length;
+      const dest = (
+        {
+          ArrowRight: (i + 1) % n,
+          ArrowLeft: (i + n - 1) % n,
+          Home: 0,
+          End: n - 1,
+        } as Record<string, number>
+      )[e.key];
+      if (dest === undefined) return;
+      e.preventDefault();
+      tabs[dest].focus();
+      tabs[dest].click();
+    };
+  }
+  window.addEventListener("hashchange", () => void select(fromHash()));
+  await select(fromHash());
 }
 main().catch((e) => {
   get("status").hidden = false;
