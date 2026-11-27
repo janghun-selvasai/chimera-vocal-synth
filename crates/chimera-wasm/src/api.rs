@@ -150,6 +150,7 @@ fn dispatch(st: &mut State, req: &Value) -> Res {
             use chimera::phonetics::korean::speech::{Condition, phrases_with};
             to_json(&phrases_with(&arg::<String>(req, "text")?, arg::<Option<Condition>>(req, "condition")?.unwrap_or(Condition::Clear)))
         }
+        "koStudioPlan" => to_json(&chimera::phonetics::korean::studio::plan(&arg::<Vec<PhraseInput>>(req,"phrases")?, &arg::<PlanOptions>(req,"options")?, arg(req,"speaker")?)),
         "koSpeaker" => to_json(&chimera::phonetics::korean::speech::studio_source(arg(req, "body")?)),
         "koSegmentLabels" => {
             let segments = arg::<Vec<chimera::phonetics::Segment>>(req, "segments")?;

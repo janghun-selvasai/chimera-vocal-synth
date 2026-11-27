@@ -248,3 +248,48 @@ fn matched_ablation_changes_only_selected_gestures() {
     assert_eq!(medial(Condition::Full), None);
     assert_eq!(medial(Condition::Medial), Some(-3.5));
 }
+
+#[test]
+fn studio_keeps_the_question_ending_and_labial_release_local_to_their_phrase() {
+    use chimera::anatomy::human::BodyName;
+    use chimera::phonetics::{korean::studio, planner::PhraseInput};
+    fn plan(text: &str) -> chimera::phonetics::Plan {
+        let inputs = phrases_with(text, Condition::Studio)
+            .into_iter()
+            .map(|p| PhraseInput {
+                segments: p.segments,
+                intonation: Some(p.intonation),
+                pause: Some(p.pause),
+            })
+            .collect::<Vec<_>>();
+        studio::plan(&inputs, &PlanOptions::default(), BodyName::Female)
+    }
+    let a = plan("같이 먹어? 불 보여.");
+    let b = plan("같이 먹어. 불 보여.");
+    let tails = a
+        .gestures
+        .iter()
+        .filter(|g| g.label.is_some_and(|l| l.as_str() == "question tail"))
+        .collect::<Vec<_>>();
+    assert_eq!(tails.len(), 1);
+    assert!(tails[0].t1 <= a.segments[7].t1 + 1e-8);
+    assert!(a.end < b.end);
+    for p in [a, b] {
+        assert!(p.segments.iter().all(|s| s.t0 < s.t1));
+        assert!(
+            p.gestures
+                .iter()
+                .all(|g| g.t0 <= g.t1 && g.ramp_in >= 0. && g.ramp_out >= 0.)
+        );
+        let stop = &p.segments[8];
+        let lip = p
+            .gestures
+            .iter()
+            .find(|g| {
+                g.label.is_some_and(|l| l.as_str() == "p") && g.t1 > stop.t0 && g.t1 < stop.t1
+            })
+            .unwrap();
+        assert!(lip.t0 <= stop.t0 - 0.12);
+        assert!(lip.t0 > p.segments[7].t1);
+    }
+}

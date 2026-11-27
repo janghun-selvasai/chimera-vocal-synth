@@ -88,7 +88,11 @@ export function setupStudio() {
   const status = () => el(mode + "-status");
   const stopButton = () =>
     el(mode + "-form").querySelector<HTMLButtonElement>(".stop")!;
-  const analysis = utteranceView(inspect, () => void resume());
+  const analysis = utteranceView(
+    inspect,
+    () => void resume(),
+    (f) => stage.lipArea(VoiceModel.articFromArray(f.t.artic)),
+  );
   const length = (take: Utterance) => take.samples.length / take.rate;
 
   function draw(

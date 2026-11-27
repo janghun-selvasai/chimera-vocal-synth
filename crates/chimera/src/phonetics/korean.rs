@@ -18,6 +18,7 @@
 
 mod morphology;
 pub mod speech;
+pub mod studio;
 
 use super::syllables::FrontEnd;
 use super::{Segment, Syllable};

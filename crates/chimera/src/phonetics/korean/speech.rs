@@ -18,6 +18,7 @@ pub enum Condition {
     Medial,
     Clear,
     Adducted,
+    Studio,
 }
 
 pub fn studio_source(
@@ -114,7 +115,7 @@ fn connected(words: &[String], clear: bool) -> Vec<Syllable> {
 
 fn plan_group(words: Vec<String>, boundary: char, condition: Condition) -> Phrase {
     use Condition::*;
-    let clear = matches!(condition, Clear | Adducted);
+    let clear = matches!(condition, Clear | Adducted | Studio);
     let joined = clear || matches!(condition, Vot | Pitch | Full | Medial);
     let syllables = if joined {
         connected(&words, clear)
@@ -147,7 +148,7 @@ fn plan_group(words: Vec<String>, boundary: char, condition: Condition) -> Phras
                 };
             }
             stop.pressed_release = fortis && (clear || matches!(condition, Full | Medial));
-            stop.adducted_stop = condition == Adducted && fortis && matches!(stop.ipa.as_str(), "p" | "t" | "k");
+            stop.adducted_stop = matches!(condition, Adducted | Studio) && fortis && matches!(stop.ipa.as_str(), "p" | "t" | "k");
         }
         // Mark the realized onset after liaison, voicing and tensification. A
         // lenis stop may also aspirate initially, but has its own shorter VOT.

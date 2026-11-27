@@ -21,7 +21,7 @@ import {
   telemetryLength,
 } from "../worklet/telemetry.ts";
 
-export const STUDIO_CONDITION = "adducted" as const;
+export const STUDIO_CONDITION = "studio" as const;
 const RATE = 48000;
 const STRIDE = 480; // One model pose per 10 ms of the actual output.
 // The CLI's "clear" condition and both studio views use the same source preset.
@@ -91,17 +91,14 @@ export async function synthesize(
   signal: AbortSignal,
   voice: BodyName = "male",
   reference?: ReferenceControls,
-  condition: "clear" | "adducted" = "clear",
+  condition: "clear" | "adducted" | "studio" = "clear",
 ): Promise<Utterance> {
   const body = reference?.body ?? PRESETS[voice];
   const profile = call<VoiceSource>("koSpeaker", { body: voice });
   const f0 = reference?.f0 ?? profile.f0;
   const phrases = koreanPhrases(text, condition);
-  const original = planPhrases(phrases, {
-    body,
-    t0: prepare ? 0.3 : 0.08,
-    f0,
-  });
+  const options={body,t0:prepare?0.3:0.08,f0};
+  const original=condition==="studio" ? call<Plan>("koStudioPlan",{phrases,options,speaker:voice}) : planPhrases(phrases,options);
   const plan = reference?.shapePlan?.(original) ?? original;
   const first = plan.segments[0];
   if (!first) throw new Error("발음할 수 있는 한글을 입력해 주세요.");

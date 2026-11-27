@@ -25,22 +25,30 @@ function surface(canvas: HTMLCanvasElement) {
 /** Anchor the PCM transient to a reopening in the rendered oral tube.
  * Geometry snapshots are 10 ms apart, so search the whole interval straddling the reopening.
  */
-function measuredRelease(take: Utterance, start: number, end: number) {
+function openingTime(
+  take: Utterance,
+  start: number,
+  end: number,
+  area: (f: TelemetryMessage) => number,
+) {
   let opening: number | undefined;
   const first = Math.max(1, Math.floor(Math.max(start, end - 0.04) * 100));
   const last = Math.min(take.frames.length - 1, Math.ceil((end + 0.04) * 100));
   for (let i = first; i <= last; i++) {
-    const before = take.frames[i - 1].t.orAreas,
-      after = take.frames[i].t.orAreas;
+    const before = area(take.frames[i - 1]),
+      after = area(take.frames[i]);
     if (
-      Math.min(...before) <= 0.02 &&
-      Math.min(...after) > 0.02 &&
+      before <= 0.02 &&
+      after > 0.02 &&
       (opening === undefined ||
         Math.abs(i / 100 - end) < Math.abs(opening - end))
     )
       opening = i / 100;
   }
-  if (opening === undefined) return;
+  return opening;
+}
+
+function measuredRelease(take: Utterance, opening: number) {
   const rate = take.rate,
     n = Math.round(rate * 0.001);
   const a = Math.max(1, Math.floor((opening - 0.013) * rate));
@@ -66,11 +74,16 @@ function measuredRelease(take: Utterance, start: number, end: number) {
   if (peak / n > 1e-12) return (a + best + n / 2) / rate;
 }
 
-export function utteranceView(move: (t: number) => void, resume: () => void) {
+export function utteranceView(
+  move: (t: number) => void,
+  resume: () => void,
+  lipArea: (f: TelemetryMessage) => number,
+) {
   const time = el<HTMLCanvasElement>("time"),
     fold = el<HTMLCanvasElement>("fold");
   const seek = el<HTMLInputElement>("seek"),
     site = el<HTMLInputElement>("site");
+  const openingButton = el<HTMLButtonElement>("opening");
   const release = el<HTMLButtonElement>("release"),
     voice = el<HTMLButtonElement>("voice");
   const play = el<HTMLButtonElement>("resume"),
@@ -82,8 +95,11 @@ export function utteranceView(move: (t: number) => void, resume: () => void) {
     frame: TelemetryMessage | undefined;
   let markers: {
     label: string;
-    release: number;
-    measured: boolean;
+    plan: number;
+    opening?: number;
+    labial: boolean;
+    release?: number;
+    alreadyVoiced: boolean;
     voice?: number;
   }[] = [];
   let lows: number[] = [],
@@ -158,6 +174,7 @@ export function utteranceView(move: (t: number) => void, resume: () => void) {
       }
       const marker = markers[stopList.selectedIndex];
       for (const [s, color] of [
+        [marker?.opening, "#71ddbc"],
         [marker?.release, "#f6cb72"],
         [marker?.voice, "#a1b7ff"],
       ] as const) {
@@ -212,7 +229,7 @@ export function utteranceView(move: (t: number) => void, resume: () => void) {
     position = t;
     frame = f;
     seek.value = String(t);
-    el("clock").textContent = t.toFixed(2) + " s";
+    el("clock").textContent = t.toFixed(3) + " s";
     const { g, w, h } = surface(time);
     if (background.width && background.height && w && h) {
       g.drawImage(background, 0, 0, w, h);
@@ -230,16 +247,23 @@ export function utteranceView(move: (t: number) => void, resume: () => void) {
   }
   function selectMarker() {
     const marker = markers[stopList.selectedIndex];
-    release.disabled = !marker;
+    openingButton.disabled = marker?.opening === undefined;
+    openingButton.textContent =
+      marker && !marker.labial ? "구강 열림으로 이동" : "입술 열림으로 이동";
+    release.disabled = marker?.release === undefined;
     voice.disabled = marker?.voice === undefined;
+    const ms = (v?: number) =>
+      v === undefined ? "미검출" : Math.round(1000 * v) + " ms";
     el("landmarks").textContent = marker
-      ? (marker.measured ? "파형 추정 파열 " : "계획 파열 ") +
-        Math.round(marker.release * 1000) +
-        " ms · " +
-        (marker.voice === undefined
-          ? "이어지는 유성 개시 미검출"
-          : "모델 유성 개시 " + Math.round(marker.voice * 1000) + " ms") +
-        " · 모델 측정 간격 10 ms"
+      ? [
+          "계획 경계 " + ms(marker.plan),
+          (marker.labial ? "입술" : "구강") + " 열림 " + ms(marker.opening),
+          "파형 추정 파열 " + ms(marker.release),
+          marker.alreadyVoiced
+            ? "파열 전부터 유성"
+            : "모델 유성 개시 " + ms(marker.voice),
+          "단면·성대 측정 간격 10 ms",
+        ].join(" · ")
       : take
         ? "이 발화에는 모음 앞 파열 표지가 없습니다."
         : "문장을 읽으면 파형과 발음 구간이 표시됩니다.";
@@ -281,30 +305,39 @@ export function utteranceView(move: (t: number) => void, resume: () => void) {
         const vowel = next.segments[i + 1];
         if (!["stop", "affricate"].includes(s.kind) || vowel?.kind !== "vowel")
           return;
-        const burst = measuredRelease(next, s.start, s.end);
-        const releaseTime = burst ?? s.end;
+        const labial = ["p", "b"].includes(s.ipa);
+        const opening = openingTime(
+          next,
+          s.start,
+          s.end,
+          labial ? lipArea : (f) => Math.min(...f.t.orAreas),
+        );
+        const burst =
+          opening === undefined ? undefined : measuredRelease(next, opening);
+        const first = Math.max(0, Math.ceil((burst ?? opening ?? s.end) * 100));
+        const voiced = (k: number) => (next.frames[k]?.t.voicing ?? 0) > 0.2;
+        const alreadyVoiced =
+          first >= 2 && [first - 2, first - 1, first, first + 1].every(voiced);
         let onset: number | undefined;
-        for (
-          let k = Math.ceil(releaseTime * 100);
-          k / 100 < vowel.end && k + 1 < next.frames.length;
-          k++
-        )
-          if (
-            next.frames[k].t.voicing > 0.2 &&
-            next.frames[k + 1].t.voicing > 0.2
-          ) {
-            onset = k / 100;
-            break;
-          }
+        if (!alreadyVoiced) {
+          for (
+            let k = first;
+            k / 100 < vowel.end && k + 1 < next.frames.length;
+            k++
+          )
+            if (voiced(k) && voiced(k + 1)) {
+              onset = k / 100;
+              break;
+            }
+        }
         markers.push({
           label:
-            "/" +
-            (s.displayIpa ?? s.ipa) +
-            "/ · " +
-            releaseTime.toFixed(2) +
-            " s",
-          release: releaseTime,
-          measured: burst !== undefined,
+            "/" + (s.displayIpa ?? s.ipa) + "/ · " + s.end.toFixed(2) + " s",
+          plan: s.end,
+          labial,
+          opening,
+          release: burst,
+          alreadyVoiced,
           voice: onset,
         });
       });
@@ -316,7 +349,8 @@ export function utteranceView(move: (t: number) => void, resume: () => void) {
     selectMarker();
   }
   stopList.onchange = selectMarker;
-  release.onclick = () => move(markers[stopList.selectedIndex].release);
+  openingButton.onclick = () => move(markers[stopList.selectedIndex].opening!);
+  release.onclick = () => move(markers[stopList.selectedIndex].release!);
   voice.onclick = () => move(markers[stopList.selectedIndex].voice!);
   play.onclick = resume;
   seek.oninput = () => move(Number(seek.value));

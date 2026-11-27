@@ -19,7 +19,7 @@ usage: chimera <command> [args] [--float]
 
   render speech  <out> [\"ipa / ipa\"] [male|female|child]
   render text    <out> [\"English text.\"] [male|female|child]
-  render korean  <out> [\"한글 문장.\"] [male|female|child] [clear|adducted|baseline|contour|rhythm|vot|pitch|full|medial] [--trace]
+  render korean  <out> [\"한글 문장.\"] [male|female|child] [clear|adducted|studio|baseline|contour|rhythm|vot|pitch|full|medial] [--trace]
   render turkish <out> [\"Türkçe metin.\"] [male|female|child]
   render song    [outdir] [male|female|child]
   render notes   <in.json> <out> [male|female|child] [--artic tracks.json] [--tele voice.tele]

@@ -4,8 +4,7 @@ import csv
 from pathlib import Path
 import numpy as np
 from collections import Counter
-from importlib import import_module
-save=import_module("onset-measure").save
+from onset_measure import save
 WORDS=["부","푸","뿌","불","풀","뿔"]
 # Same scale for every condition, context and speaker. Interpret in the original units too.
 SCALES={"votMs":20,"burstDb":6,"onsetSt":2,"h1h2Db":6}

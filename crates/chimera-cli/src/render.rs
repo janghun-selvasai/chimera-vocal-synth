@@ -184,7 +184,7 @@ pub fn say(g: &EnglishG2P, text: &str, body_name: &str) -> Result<Spoken, String
 
 /// Say phrases from any G2P the way `render text` does (see [`say`]).
 pub fn say_phrases(phrases: &[Phrase], body_name: &str) -> Result<Spoken, String> {
-    let (plan, shown) = speech_plan(phrases, body_name, text_f0(body_name))?;
+    let (plan, shown) = speech_plan(phrases, body_name, text_f0(body_name), None)?;
     let mut voice = HumanVoice::new(FS, body(body_name)?, 2);
     voice.set_source(&SourcePatch::f0(text_f0(body_name)));
     voice.schedule(&plan.gestures);
@@ -194,7 +194,12 @@ pub fn say_phrases(phrases: &[Phrase], body_name: &str) -> Result<Spoken, String
     Ok(Spoken { out, plan, shown })
 }
 
-fn speech_plan(phrases: &[Phrase], body_name: &str, f0: f64) -> Result<(Plan, String), String> {
+fn speech_plan(
+    phrases: &[Phrase],
+    body_name: &str,
+    f0: f64,
+    studio: Option<chimera::anatomy::human::BodyName>,
+) -> Result<(Plan, String), String> {
     body(body_name)?;
     let shown: Vec<String> = phrases
         .iter()
@@ -219,15 +224,16 @@ fn speech_plan(phrases: &[Phrase], body_name: &str, f0: f64) -> Result<(Plan, St
             pause: Some(p.pause),
         })
         .collect();
-    let plan = plan_phrases(
-        &inputs,
-        &PlanOptions {
-            body: body_name.into(),
-            t0: 0.05,
-            f0: Some(f0),
-            ..Default::default()
-        },
-    );
+    let options = PlanOptions {
+        body: body_name.into(),
+        t0: 0.05,
+        f0: Some(f0),
+        ..Default::default()
+    };
+    let plan = match studio {
+        Some(speaker) => chimera::phonetics::korean::studio::plan(&inputs, &options, speaker),
+        None => plan_phrases(&inputs, &options),
+    };
     Ok((plan, shown.join(" | ")))
 }
 
@@ -263,13 +269,15 @@ pub fn korean(ctx: &Ctx, a: &[String]) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     let phrases = speech::phrases_with(text, condition);
     let profile = speech::studio_source(chimera::anatomy::human::BodyName::parse(body_name));
-    let source = if matches!(condition, speech::Condition::Clear | speech::Condition::Adducted) {
+    let source = if matches!(condition, speech::Condition::Clear | speech::Condition::Adducted | speech::Condition::Studio) {
         SourcePatch::from_source(&profile)
     } else {
         SourcePatch::f0(text_f0(body_name))
     };
     let f0 = source.f0.unwrap_or(text_f0(body_name));
-    let (plan, shown) = speech_plan(&phrases, body_name, f0)?;
+    let studio = (condition == speech::Condition::Studio)
+        .then(|| chimera::anatomy::human::BodyName::parse(body_name));
+    let (plan, shown) = speech_plan(&phrases, body_name, f0, studio)?;
     let mut voice = HumanVoice::new(FS, body(body_name)?, 2);
     voice.set_source(&source);
     voice.schedule(&plan.gestures);

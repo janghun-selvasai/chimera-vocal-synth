@@ -122,6 +122,8 @@ export class MouthStage {
     this.model = new VoiceModel(body, 48000);
   }
 
+  lipArea(pose:HumanArtic) { return this.model.frame(pose).lipArea; }
+
   formantsAt(pose: HumanArtic) {
     return this.model.transfer(pose).formants;
   }

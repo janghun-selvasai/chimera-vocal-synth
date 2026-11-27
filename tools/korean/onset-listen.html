@@ -1,0 +1,51 @@
+<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CHIMERA · 짧은 청취 비교</title>
+<style>:root{color-scheme:dark;font:16px/1.6 system-ui,sans-serif;background:#102029;color:#edf8f6}body{max-width:650px;margin:5vh auto;padding:20px}h1{font-size:1.8rem}button,select{background:#24424a;color:inherit;font:inherit;border:1px solid #709290;padding:.45em .8em;border-radius:6px;margin:.2em}button:disabled{opacity:.45}audio{display:block;width:100%;margin:1em 0}small{color:#b2c3c8}label{display:block;margin:10px 0}[hidden]{display:none!important}</style>
+<h1>짧은 청취 비교</h1><p>한 음색당 단어 12개와 문장 비교 1개입니다. 평소 듣는 음량을 정하고 한 세트를 마칠 때까지 유지해 주세요.</p>
+<label>음색 <select id="voice"><option value="male">성인 남성</option><option value="female">성인 여성</option><option value="child">아동</option></select></label>
+<button id="begin">시작</button><p role="status" id="status"></p>
+<section id="trial" hidden><h2 id="prompt"></h2><audio id="sound" controls></audio><div id="answers"></div></section>
+<section id="pair" hidden><h2>같이 먹어?</h2><p>세 음원을 듣고 두 질문에 각각 답해 주세요.</p><div id="players"></div>
+<label>원음과 음색이 더 비슷한 쪽 <select id="color"></select></label><label>질문의 억양과 리듬이 더 자연스러운 쪽 <select id="rhythm"></select></label>
+<button id="finish" disabled>답변 저장</button></section><button id="download" hidden>응답 CSV 받기</button>
+<script>
+const pack=/*PACK*/{};
+const el=id=>document.getElementById(id);
+let queue=[],results=[],who="",order=[],tested=new Set();
+const choices=["부","푸","뿌","불","풀","뿔","모르겠음"];
+const shuffled=arr=>{const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[j],a[i]]=[a[i],a[j]]}return a};
+const url=b64=>"data:audio/wav;base64,"+b64;
+function show(){
+ const row=queue[results.length];
+ el("status").textContent=results.length+" / 13 완료";
+ el("trial").hidden=!row;
+ if(!row){el("sound").pause();el("pair").hidden=false;makePair();return}
+ el("prompt").textContent=row.ctx==="word"?"어떤 음절이 들리나요?":"‘이번에는 ___ 차례야’에서 어떤 단어가 들리나요?";
+ el("sound").src=url(row.wav);
+ const labels=row.ctx==="word"?choices.slice(0,3):choices.slice(3,6);
+ el("answers").replaceChildren(...[...labels,"모르겠음"].map(label=>{
+  const b=document.createElement("button");b.textContent=label;b.disabled=true;b.onclick=()=>{
+   results.push([who,results.length+1,row.ctx,row.version,row.word,label,"",""]);show()
+  };return b
+ }));
+ el("sound").onended=()=>el("answers").querySelectorAll("button").forEach(b=>b.disabled=false);
+}
+function makePair(){
+ order=shuffled([0,1]);tested=new Set();
+ const container=el("players");container.replaceChildren();
+ [pack[who].reference,...order.map(i=>pack[who].q[i])].forEach((wav,i)=>{
+  const label=document.createElement("label");label.textContent=["원음","A","B"][i];const audio=document.createElement("audio");
+  audio.controls=true;audio.src=url(wav);audio.onplay=()=>container.querySelectorAll("audio").forEach(a=>{if(a!==audio)a.pause()});
+  audio.onended=()=>{tested.add(i);ready()};label.append(audio);container.append(label);
+ });
+ for(const id of ["color","rhythm"]){el(id).replaceChildren(...["선택","A","B","차이 없음"].map(v=>new Option(v,v)));el(id).onchange=ready;}
+ ready()
+}
+function ready(){el("finish").disabled=tested.size!==3||[el("color"),el("rhythm")].some(s=>s.value==="선택")}
+el("begin").onclick=()=>{who=el("voice").value;results=[];queue=shuffled(pack[who].rows);el("begin").disabled=el("voice").disabled=true;el("download").hidden=true;show()};
+el("finish").onclick=()=>{const key=answer=>answer==="차이 없음"?answer:["before","after"][order[answer==="A"?0:1]];
+ results.push([who,13,"question",order.join("-"),"같이 먹어?","",key(el("color").value),key(el("rhythm").value)]);
+ el("pair").hidden=true;el("players").replaceChildren();el("download").hidden=false;el("status").textContent="13 / 13 완료 · CSV를 저장한 뒤 다음 세트를 시작하세요."};
+el("download").onclick=()=>{const csv="voice,order,context,condition,target,response,timbre,rhythm\n"+results.map(r=>r.join(",")).join("\n");
+ const href=URL.createObjectURL(new Blob(["\ufeff",csv],{type:"text/csv;charset=utf-8"}));const a=document.createElement("a");a.href=href;a.download="CHIMERA-"+who+"-13문항.csv";a.click();setTimeout(()=>URL.revokeObjectURL(href),3000);
+ el("begin").disabled=el("voice").disabled=false};
+</script></html>

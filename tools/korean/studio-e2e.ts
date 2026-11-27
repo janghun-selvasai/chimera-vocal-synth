@@ -199,9 +199,20 @@ try {
     assert.ok(
       Number.isFinite(Number(await page.locator("#lip-flow").textContent())),
     );
+    await page.locator("#tts-input").fill("불, 풀, 뿔.");
+    await page.locator("#tts-start").click();
+    await page.locator("#tts-status", { hasText: "재생 완료" }).waitFor();
+    await page.locator("#analysis-stop").selectOption({ index: 2 });
+    assert.match(
+      await page.locator("#landmarks").innerText(),
+      /계획 경계 \d+ ms · 입술 열림 \d+ ms · 파형 추정 파열 \d+ ms/,
+    );
+    await page.locator("#opening").click();
+    const opening = Number(await page.locator("#seek").inputValue());
+    assert.ok(opening > 0);
     await page.locator("#release").click();
     const burst = Number(await page.locator("#seek").inputValue());
-    assert.ok(burst > 0);
+    assert.ok(burst > 0 && Math.abs(opening - burst) < 0.02);
     await page.locator("#voice").click();
     assert.ok(Number(await page.locator("#seek").inputValue()) >= burst);
     await page.locator("#resume").click();
