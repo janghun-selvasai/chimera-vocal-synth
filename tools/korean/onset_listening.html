@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>단어와 문장 속 ㅂ · CHIMERA</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      body {
+        margin: 0;
+        background: #0d171d;
+        color: #ebf1f2;
+        font:
+          16px/1.6 "Malgun Gothic",
+          system-ui,
+          sans-serif;
+      }
+      main {
+        width: min(100%, 660px);
+        margin: clamp(36px, 8vh, 80px) auto;
+        padding: 0 20px;
+      }
+      h1,
+      h2 {
+        letter-spacing: -0.045em;
+        line-height: 1.25;
+      }
+      h1 {
+        font-size: clamp(28px, 6vw, 39px);
+        margin: 0 0 12px;
+      }
+      h2 {
+        font-size: 22px;
+        margin: 16px 0;
+      }
+      p {
+        margin: 0 0 14px;
+      }
+      .soft,
+      small,
+      label {
+        color: #c0cfd3;
+      }
+      section {
+        background: #15262e;
+        border: 1px solid #39525b;
+        border-radius: 12px;
+        padding: clamp(18px, 4vw, 30px);
+        margin: 22px 0 14px;
+      }
+      progress {
+        display: block;
+        width: 100%;
+        height: 8px;
+        margin: 8px 0 24px;
+        accent-color: #80deca;
+      }
+      button {
+        font: inherit;
+        min-height: 46px;
+        cursor: pointer;
+        border-radius: 8px;
+        padding: 7px 15px;
+        color: inherit;
+        background: #20353f;
+        border: 1px solid #526a74;
+      }
+      button.primary {
+        color: #103029;
+        background: #83e2cd;
+        font-weight: bold;
+        border-color: #83e2cd;
+      }
+      button:disabled {
+        opacity: 0.46;
+        cursor: default;
+      }
+      button:focus-visible {
+        outline: 3px solid #a8f3e2;
+        outline-offset: 3px;
+      }
+      #answers {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      #answers button {
+        font-size: 22px;
+      }
+      #answers button:last-child {
+        grid-column: 1/-1;
+        font-size: 16px;
+      }
+      footer {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+      }
+      #results {
+        white-space: pre-line;
+      }
+      #error {
+        color: #ffc899;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>단어와 문장 속 ㅂ</h1>
+      <p class="soft">
+        단어 듣기와 문장 듣기가 각각 <span id="block-size"></span>문항입니다.
+        끝까지 듣고 가장 가깝게 들린 단어를 고르세요. 다시 들을 수 있습니다.
+      </p>
+      <section>
+        <div id="count" aria-live="polite"></div>
+        <progress id="progress" value="0" aria-label="전체 응답"></progress>
+        <div id="trial">
+          <p id="prompt"></p>
+          <button id="listen" class="primary">▶ 소리 듣기</button>
+          <h2>들린 단어</h2>
+          <div id="answers"></div>
+        </div>
+        <div id="pause" hidden>
+          <h2 id="heading"></h2>
+          <p id="results"></p>
+          <button id="next" class="primary">다음 묶음 듣기</button>
+        </div>
+        <p id="error" role="alert" hidden></p>
+      </section>
+      <footer>
+        <button id="csv" disabled>응답 CSV 저장</button
+        ><small id="saved">이 브라우저에서 이어 들을 수 있습니다.</small>
+      </footer>
+    </main>
+    <script type="application/json" id="clips" data-version="PACK_VERSION">
+      AUDIO_BANK
+    </script>
+    <script>
+      const bank = JSON.parse(document.getElementById("clips").textContent),
+        el = (id) => document.getElementById(id);
+      const key =
+        "chimera-word-medial-onset-" +
+        document.getElementById("clips").dataset.version;
+      const blockSize = bank.length / 2,
+        voiceCount = new Set(bank.map((trial) => trial.voice)).size;
+      el("block-size").textContent = blockSize;
+      el("progress").max = bank.length;
+      function shuffle(input) {
+        const a = [...input];
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+      }
+      function session() {
+        try {
+          const previous = JSON.parse(localStorage.getItem(key));
+          if (
+            previous?.order.length === bank.length &&
+            previous.rows.length <= bank.length
+          )
+            return previous;
+        } catch {}
+        const contexts = shuffle(["단어", "문장"]);
+        const order = contexts.flatMap((context) =>
+          shuffle(
+            bank.map((_, i) => i).filter((i) => bank[i].context === context),
+          ),
+        );
+        return { id: crypto.randomUUID(), order, rows: [], paused: false };
+      }
+      const s = session(),
+        audio = new Audio();
+      function save() {
+        try {
+          localStorage.setItem(key, JSON.stringify(s));
+        } catch {
+          el("saved").textContent = "창을 닫기 전에 응답 CSV를 저장하세요.";
+        }
+      }
+      let plays = 0;
+      function show() {
+        audio.pause();
+        plays = 0;
+        const n = s.rows.length,
+          done = n === bank.length;
+        el("progress").value = n;
+        el("csv").disabled = !n;
+        el("error").hidden = true;
+        el("trial").hidden = done || s.paused;
+        el("pause").hidden = !el("trial").hidden;
+        if (done || s.paused) {
+          el("count").textContent = n + " / " + bank.length + "개 응답";
+          el("heading").textContent = done
+            ? "청취를 마쳤습니다"
+            : "첫 " + blockSize + "문항을 마쳤습니다";
+          el("next").hidden = done;
+          el("results").textContent = done
+            ? ["단어", "문장"]
+                .map((context) => {
+                  const word = context === "단어" ? "부" : "불";
+                  const counts = ["기존", "시작 F0 낮춤"].map(
+                    (condition) =>
+                      s.rows.filter((r, i) => {
+                        const t = bank[s.order[i]];
+                        return (
+                          t.context === context &&
+                          t.target === word &&
+                          t.condition === condition &&
+                          r.answer === word
+                        );
+                      }).length,
+                  );
+                  return (
+                    context +
+                    " ‘" +
+                    word +
+                    "’ 식별 · 기존 " +
+                    counts[0] +
+                    "/" +
+                    voiceCount +
+                    ", 후보 " +
+                    counts[1] +
+                    "/" +
+                    voiceCount
+                  );
+                })
+                .join("\n")
+            : "지금까지의 응답을 저장하거나 다음 묶음으로 이어갈 수 있습니다.";
+          return;
+        }
+        const t = bank[s.order[n]],
+          sentence = t.context === "문장";
+        el("count").textContent =
+          t.context + " 듣기 · " + ((n % blockSize) + 1) + " / " + blockSize;
+        el("prompt").textContent = sentence
+          ? "‘저기 ___ 보여?’에서 가운데 들린 단어를 골라 주세요."
+          : "한 음절을 듣고 골라 주세요.";
+        el("listen").textContent = "▶ 소리 듣기";
+        audio.src = "data:audio/wav;base64," + t.wav;
+        el("answers").replaceChildren(
+          ...[
+            ...(sentence ? ["불", "풀", "뿔"] : ["부", "푸", "뿌"]),
+            "모르겠음",
+          ].map((answer) => {
+            const b = document.createElement("button");
+            b.textContent = answer;
+            b.disabled = true;
+            b.onclick = () => {
+              if (!plays || s.rows.length !== n) return;
+              s.rows.push({ answer, plays });
+              s.paused = s.rows.length === blockSize;
+              save();
+              show();
+              if (!s.paused && s.rows.length < bank.length)
+                el("listen").focus();
+            };
+            return b;
+          }),
+        );
+      }
+      audio.onended = () => {
+        plays++;
+        for (const b of el("answers").children) b.disabled = false;
+      };
+      el("listen").onclick = async () => {
+        const n = s.rows.length;
+        try {
+          audio.currentTime = 0;
+          await audio.play();
+          if (n === s.rows.length) el("listen").textContent = "↻ 다시 듣기";
+        } catch (e) {
+          if (e.name !== "AbortError") {
+            el("error").hidden = false;
+            el("error").textContent = "다시 눌러 재생해 주세요.";
+          }
+        }
+      };
+      el("next").onclick = () => {
+        s.paused = false;
+        save();
+        show();
+        el("listen").focus();
+      };
+      el("csv").onclick = () => {
+        const rows = [
+          [
+            "청취 세션",
+            "문항",
+            "맥락",
+            "화자",
+            "조건",
+            "목표",
+            "응답",
+            "단어 일치",
+            "완주 재생 횟수",
+          ],
+        ];
+        s.rows.forEach((r, i) => {
+          const t = bank[s.order[i]];
+          rows.push([
+            s.id,
+            i + 1,
+            t.context,
+            t.voice,
+            t.condition,
+            t.target,
+            r.answer,
+            Number(t.target === r.answer),
+            r.plays,
+          ]);
+        });
+        const url = URL.createObjectURL(
+          new Blob(["\ufeff" + rows.map((r) => r.join(",")).join("\r\n")], {
+            type: "text/csv;charset=utf-8",
+          }),
+        );
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "CHIMERA-단어와문장-" + s.rows.length + "문항.csv";
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+      };
+      save();
+      show();
+    </script>
+  </body>
+</html>

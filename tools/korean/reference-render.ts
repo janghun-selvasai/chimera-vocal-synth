@@ -31,6 +31,8 @@ interface Job {
   text: string;
   voice: BodyName;
   fit?: Fit;
+  /** Vowel segment index and measured onset in a connected-speech reference take. */
+  lowerOnset?: { vowel: number; at: number };
 }
 
 function adjust(
@@ -114,7 +116,7 @@ function adjust(
 
 const [jobsFile, out] = process.argv.slice(2);
 const jobs: Job[] = JSON.parse(readFileSync(jobsFile, "utf8"));
-for (const { id, text, voice, fit } of jobs) {
+for (const { id, text, voice, fit, lowerOnset } of jobs) {
   const poses: Record<string, Partial<HumanArtic>> = {};
   if (fit?.vowels) {
     const model = new VoiceModel(fit.body ?? PRESETS[voice], 48000);
@@ -132,7 +134,40 @@ for (const { id, text, voice, fit } of jobs) {
     voice,
     fit && {
       ...fit,
-      shapePlan: fit.time && ((plan) => adjust(plan, fit, poses)),
+      shapePlan: (original) => {
+        const plan = fit.time ? adjust(original, fit, poses) : original;
+        if (!lowerOnset) return plan;
+        const { vowel, at } = lowerOnset;
+        const stop = plan.segments[vowel - 1],
+          u = plan.segments[vowel];
+        if (
+          !stop ||
+          !["p", "b"].includes(stop.ipa) ||
+          u?.ipa !== "u" ||
+          at < u.t0 ||
+          at + 0.06 > u.t1
+        ) {
+          throw new Error(
+            "Expected the voiced onset inside the target /u/ after a labial stop",
+          );
+        }
+        const hold = Math.max(stop.t0, at - 0.02);
+        return {
+          ...plan,
+          gestures: [
+            ...plan.gestures,
+            {
+              t0: hold,
+              t1: at + 0.015,
+              rampIn: Math.min(0.065, hold - stop.t0),
+              rampOut: 0.045,
+              strength: 1,
+              targets: { pitchSt: -3 },
+              label: "target onset pitch",
+            },
+          ],
+        };
+      },
     },
   );
   // The driver reads lossless little-endian float PCM, then writes the listening WAV once.

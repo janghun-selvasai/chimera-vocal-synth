@@ -59,6 +59,20 @@ python3 tools/korean/standalone.py out/Korean-Speech-Lab.html
 
 녹음, 항목별 WAV, 재생용 패키지는 로컬 파일이다. 빌드된 페이지의 `/korean.html#reference` 또는 오프라인 HTML에서 재생한다. `bun tools/korean/reference-e2e.ts http://127.0.0.1:4173/korean.html`로 세 녹음이 있는 빌드의 항목 전환과 재생을 확인할 수 있다.
 
+### 단독 ‘불’의 청취 결과를 다른 문맥에서 시험하기
+
+최초 청취에 쓴 팩을 보관한 상태에서 아래 명령을 실행한다. 입력은 두 단계의 화자 맞춤 합성이 끝난 팩과 작업 폴더다.
+
+```sh
+python3 tools/korean/reference_transfer.py --work out/korean-reference --pack public/korean-lab/reference-local.json --out out/onset-transfer
+```
+
+`reference-proposed.json`은 단독 ‘불’의 조정 후 WAV와 측정값을 교체한 팩이다. 해당 녹음으로 청취 확인 후 이 파일을 `public/korean-lab/reference-local.json`으로 복사하고 데모를 빌드한다. `korean.html?item=불#reference`에서 바로 들을 수 있다.
+
+브라우저에서 청취판을 함께 제공하려면 빌드 전에 생성한 `onset-transfer.html`을 `public/onset-transfer.html`로 복사한다. 두 로컬 파일은 Git에서 제외한다.
+
+`onset-transfer.html`은 로컬에서 여는 24문항 청취판이다. 단독 ‘부’에서는 녹음에 맞춘 기존 F0 목표를 유성 개시 주변에서 최대 3반음 낮춘다. ‘저기 불 보여?’에는 원음이 없어 동일 화자 설정과 같은 질문 억양을 쓰고, 문장 중간 /b/ 다음 /u/에만 상대 피치 제스처를 추가한다. 대조어는 ‘푸·뿌’와 ‘저기 풀/뿔 보여?’다. 발화 앞부분의 PCM 일치, 분절 시점 및 출력 F0를 검사하고, 화자별 수치를 `metrics.json`에 남긴다. 채택한 단독 ‘불’과 전이 시험의 두 맥락은 구분해 평가한다.
+
 ## 듣고 살펴보기
 
 | 재생 순서 | 개선 전 | 개선 후 |

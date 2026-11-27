@@ -9,6 +9,7 @@ interface Take {
 }
 interface Row {
   text: string;
+  loweredOnset?: boolean;
   takes: Record<Condition, Take>;
 }
 interface Pack {
@@ -181,6 +182,9 @@ export function setupReference() {
             takes[0].duration +
             " ms"
           : shown.map((r) => r.text).join(" → ");
+      if (c.key === "after" && shown.some((r) => r.loweredOnset)) {
+        c.caption.textContent += " · ‘불’ 모음 시작 음높이 낮춤";
+      }
     }
     volume();
     plot.closest("figure")!.hidden = shown.length !== 1;
@@ -220,6 +224,9 @@ export function setupReference() {
     item.add(new Option("불 → 풀 → 뿔", "3,4,5"));
     for (const [i, w] of pack.words.slice(0, 6).entries())
       item.add(new Option(w, String(i)));
+    const requested = new URLSearchParams(location.search).get("item");
+    const index = requested ? pack.words.indexOf(requested) : -1;
+    if (index >= 0) item.value = String(index);
     status.hidden = true;
     el("ref-content").hidden = false;
     select();
