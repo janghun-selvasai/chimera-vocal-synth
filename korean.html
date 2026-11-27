@@ -7,6 +7,7 @@
 <button id="tts" role="tab" aria-selected="true" aria-controls="tts-panel">텍스트 읽기</button>
 <button id="prepare" role="tab" aria-selected="false" aria-controls="prepare-panel" tabindex="-1">첫 입모양</button>
 <button id="speakers" role="tab" aria-selected="false" aria-controls="speaker-panel" tabindex="-1">음색 비교</button>
+<button id="reference" role="tab" aria-selected="false" aria-controls="reference-panel" tabindex="-1">화자 녹음 비교</button>
 <button id="explore" role="tab" aria-selected="false" aria-controls="explorer" tabindex="-1">발화 비교</button>
 <button id="blind" role="tab" aria-selected="false" aria-controls="listener" tabindex="-1">블라인드 청취</button></nav>
 <p id="status" role="status">음성 엔진을 여는 중…</p>
@@ -47,6 +48,20 @@
 <div id="speaker-cards"></div>
 <p class="caption" id="speaker-note" hidden>F0는 성대의 초당 진동수이고 F1·F2는 성도의 첫 두 공명 주파수입니다. 막대는 세 프리셋에 같은 눈금을 사용합니다. 수치는 이 합성 모델의 값입니다.</p>
 </section>
+<section id="reference-panel" role="tabpanel" aria-labelledby="reference" hidden>
+<h2>화자 녹음에 맞춘 한국어 발화</h2>
+<p id="ref-status" role="status">비교 음원을 여는 중…</p>
+<div id="ref-content" hidden>
+<div class="controls ref-controls"><label>기준 화자<select id="ref-voice"></select></label><label>듣기 항목<select id="ref-item"></select></label>
+<label class="ref-gain"><input type="checkbox" id="ref-gain" checked> 재생 음량 맞춤</label></div>
+<div id="ref-audio"></div>
+<figure class="panel ref-pitch"><figcaption><h3>발화 중 음높이 <small>Hz</small></h3>
+<p>소리가 시작된 시각을 맞췄습니다. 선이 끊긴 곳은 주기적인 진동을 측정하기 어려운 구간입니다.</p></figcaption>
+<canvas id="ref-plot" aria-label="원음, 조정 전, 조정 후의 출력 음성에서 측정한 기본주파수"></canvas></figure>
+<details id="ref-stops"><summary>여섯 단어의 초성과 받침 비교</summary>
+<p>각 칸은 원음 / 조정 전 / 조정 후 순서입니다. 파열과 유성 개시는 음원에서 추정했으며, 청취자의 단어 식별은 별도 평가입니다.</p>
+<table><thead><tr><th>단어</th><th>파열 → 유성 개시 (ms)</th><th>파열 → 소리 끝 (ms)</th></tr></thead><tbody></tbody></table></details>
+</div></section>
 <section id="explorer" role="tabpanel" aria-labelledby="explore" hidden>
 <div class="controls"><label>단어 · 문장<select id="word"></select></label><label>합성 조건<select id="condition"></select></label>
 <audio id="audio" controls preload="auto" aria-label="선택한 발화"></audio></div>

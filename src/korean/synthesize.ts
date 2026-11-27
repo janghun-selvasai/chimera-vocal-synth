@@ -7,6 +7,8 @@ import {
   type Gesture,
   type HumanArtic,
   type VoiceSource,
+  type Plan,
+  type BodyMix,
 } from "../wasm/engine.ts";
 import { writeGestures } from "../wasm/wire.ts";
 import { VoiceModel } from "../ui/analysis.ts";
@@ -74,21 +76,31 @@ function prepareGestures(
   return result;
 }
 
+/** Optional controls for reconstructing a recorded utterance with the physical model. */
+export interface ReferenceControls {
+  f0: number;
+  brightness?: number;
+  body?: BodyMix;
+  shapePlan?: (plan: Plan) => Plan;
+}
+
 export async function synthesize(
   text: string,
   prepare: boolean,
   signal: AbortSignal,
   voice: BodyName = "male",
+  reference?: ReferenceControls,
 ): Promise<Utterance> {
-  const body = PRESETS[voice];
+  const body = reference?.body ?? PRESETS[voice];
   const profile = call<VoiceSource>("koSpeaker", { body: voice });
-  const f0 = profile.f0;
+  const f0 = reference?.f0 ?? profile.f0;
   const phrases = koreanPhrases(text);
-  const plan = planPhrases(phrases, {
+  const original = planPhrases(phrases, {
     body,
     t0: prepare ? 0.3 : 0.08,
     f0,
   });
+  const plan = reference?.shapePlan?.(original) ?? original;
   const first = plan.segments[0];
   if (!first) throw new Error("발음할 수 있는 한글을 입력해 주세요.");
   const gestures = [...plan.gestures];
@@ -114,7 +126,7 @@ export async function synthesize(
     .exports as unknown as VoiceExports;
   const h = x.engine_new(RATE);
   try {
-    if (voice !== "male") x.engine_set_body(h, body.female, body.child);
+    if (body.female || body.child) x.engine_set_body(h, body.female, body.child);
     const source = new Float64Array(
       x.memory.buffer,
       x.engine_values(h),
@@ -122,7 +134,7 @@ export async function synthesize(
     ).fill(NaN);
     source[0] = f0;
     source[2] = profile.pressure;
-    source[11] = profile.brightness;
+    source[11] = reference?.brightness ?? profile.brightness;
     x.engine_set_source(h);
     const count = writeGestures(
       x.memory.buffer,

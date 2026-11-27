@@ -338,11 +338,13 @@ async function main() {
   let comparison: Awaited<ReturnType<typeof loadComparison>> | undefined;
   let loading: ReturnType<typeof loadComparison> | undefined;
   let navigation = 0;
+  let reference: ReturnType<typeof import("./reference.ts").setupReference> | undefined;
   let speakers: ReturnType<typeof import("./speakers.ts").setupSpeakers> | undefined;
   async function select(id: string) {
     const current = ++navigation;
     studio.stop();
     speakers?.leave();
+    reference?.stop();
     comparison?.stop();
     for (const tab of tabs) {
       const selected = tab.id === id;
@@ -353,6 +355,13 @@ async function main() {
     status.hidden = true;
     if (id === "tts" || id === "prepare") {
       studio.show(id);
+      return;
+    }
+    if (id === "reference") {
+      const { setupReference } = await import("./reference.ts");
+      if (current !== navigation) return;
+      reference ??= setupReference();
+      await reference.show();
       return;
     }
     if (id === "speakers") {

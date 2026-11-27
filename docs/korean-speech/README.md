@@ -39,6 +39,26 @@ F0와 길이는 각 렌더의 10 ms 엔진 기록에서, F1·F2는 그 자세의
 
 한국어로 고정한 로컬 Whisper small Q5_1에 같은 설정으로 각 단어를 한 번씩 들려줬다. 공백·문장부호를 빼고 비교했을 때 ㅅ·ㅆ 여섯 단어의 일치는 0/6에서 1/6(쌀)이 됐다. ‘살’의 전사는 ‘사르’였고 ‘시’와 ‘씨’ 모두 모음이 길게 전사됐다. ‘불·풀·뿔·달·탈·딸’의 남성 WAV 여섯 개는 직전 버전과 동일했고, 양쪽 모두 ‘탈’ 1/6만 일치했다. 단어 끝 ㄹ의 조음을 105 ms 연장한 별도 후보도 같은 1/6이라 채택하지 않았다. ‘같이 먹어?’는 양쪽 모두 전사됐고 ‘아빠가 쌀을 사요.’는 양쪽 모두 틀렸다. 한국어 화자의 단어 식별, 음색 식별, 자연스러움 평가는 남아 있다.
 
+## 화자별 녹음에 맞춘 발화 비교
+
+**화자 녹음 비교**에서 기준 화자와 항목을 선택해 원음·조정 전·조정 후를 듣는다. ‘부 → 푸 → 뿌’와 ‘불 → 풀 → 뿔’은 원래 낱말 녹음 사이에 260 ms를 추가해 이어 듣는다. 음량 맞춤은 발화 구간 RMS를 기준으로 플레이어 볼륨만 낮춘다. 단어별 표는 음원에서 추정한 파열부터 유성 개시와 발화 끝까지의 시간이다. ‘같이 먹어?’에서는 출력 WAV에서 추정한 F0 곡선을 같은 시작점에 표시한다.
+
+이 실험은 지정한 녹음을 물리 모델로 다시 합성한다. 각 화자의 ‘부’와 문장으로 한 가지 성도 혼합 비율과 성대 밝기를 선택하고, 각 항목에서는 녹음의 스펙트럼·에너지·유성도 변화를 기존 합성에 시간 정렬해 조음과 성대 제스처를 다시 계획한다. 파열 뒤에는 기식 길이를, 모음과 받침 구간에서는 제스처의 지속시간을 조정한다. 분절 경계는 추정값이다. 청취 검증과 새 문장에 대한 평가는 별도로 진행한다.
+
+한 파일에 한 화자가 ‘부, 푸, 뿌, 불, 풀, 뿔, 같이 먹어?’ 순서로 말하고 항목 사이에 휴지를 둔 녹음을 사용한다. 기본 음색은 첫 파일이 남성, 나머지가 각각 여성·아동 프리셋이다. 한 화자의 파일만으로도 실행할 수 있다. FFmpeg, NumPy, SciPy와 빌드된 WASM이 필요하다.
+
+```sh
+bun run wasm
+python3 tools/korean/reference_fit.py --male /path/to/male.wav --female /path/to/female.wav --child /path/to/child.wav --work out/korean-reference --pack public/korean-lab/reference-local.json
+python3 tools/korean/reference_articulation.py --work out/korean-reference --pack public/korean-lab/reference-local.json
+bun --bun run build
+python3 tools/korean/standalone.py out/Korean-Speech-Lab.html
+```
+
+두 번째 스크립트는 원음에서 모음의 첫 두 공명 주파수(F1·F2)를 추정한다. ‘부’로 고른 ㅜ 조음 보정 비율을 여섯 단어에 공통 적용하고, 문장에서는 폐쇄·마찰·비음 시간을 확보한 후보를 비교한다. 선택 과정은 `articulation-audit.json`에 남긴다. 로컬 자동 전사도 후보 선택에 쓰려면 두 번째 명령에 `--whisper-cli /path/to/whisper-cli --whisper-model /path/to/ggml-small-q5_1.bin`을 추가한다. 자동 전사를 사용한 경우 해당 문장의 전사 일치는 독립 평가로 집계할 수 없다.
+
+녹음, 항목별 WAV, 재생용 패키지는 로컬 파일이다. 빌드된 페이지의 `/korean.html#reference` 또는 오프라인 HTML에서 재생한다. `bun tools/korean/reference-e2e.ts http://127.0.0.1:4173/korean.html`로 세 녹음이 있는 빌드의 항목 전환과 재생을 확인할 수 있다.
+
 ## 듣고 살펴보기
 
 | 재생 순서 | 개선 전 | 개선 후 |

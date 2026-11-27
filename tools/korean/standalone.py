@@ -30,9 +30,17 @@ html = html.replace(
     '<link rel="stylesheet" href="/src/korean/lab.css">',
     "<style>" + Path("src/korean/lab.css").read_text(encoding="utf8") + "</style>",
 )
+reference = Path("public/korean-lab/reference-local.json")
+recordings = ""
+if reference.exists():
+    data = reference.read_text(encoding="utf8").replace("<", r"\u003c")
+    recordings = (
+        '<script type="application/json" id="reference-data">' + data + "</script>"
+    )
 html = html.replace(
     '<script type="module" src="/src/korean/lab.ts"></script>',
-    '<script type="application/octet-stream" id="engine-data">'
+    recordings
+    + '<script type="application/octet-stream" id="engine-data">'
     + encode("src/wasm/chimera.wasm")
     + "</script>"
     '<script type="application/octet-stream" id="session-data">'

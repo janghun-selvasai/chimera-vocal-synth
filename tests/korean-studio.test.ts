@@ -79,6 +79,17 @@ test("dropping one studio view keeps a second view of the same tract usable", as
   }
 });
 
+test("reference pitch steers the source without altering the next stock utterance", async () => {
+  const signal = new AbortController().signal;
+  const stock = await synthesize("부", false, signal);
+  const candidate = await synthesize("부", false, signal, "male", { f0: 185, brightness: 0.4 });
+  const stockAgain = await synthesize("부", false, signal);
+  const vowel = stock.segments[1];
+  const middle = (vowel.start + vowel.end) / 2;
+  expect(playbackAt(candidate, middle).telemetry.t.f0).toBeGreaterThan(playbackAt(stock, middle).telemetry.t.f0 * 1.4);
+  expect(stockAgain.samples).toEqual(stock.samples);
+});
+
 test("free text uses Korean phonology and can be cancelled before playback", async () => {
   const sentence = await synthesize(
     "같이 먹어?",
