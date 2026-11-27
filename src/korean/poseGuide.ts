@@ -78,6 +78,10 @@ export class MouthStage {
     this.model = new VoiceModel(body, 48000);
   }
 
+  formantsAt(pose: HumanArtic) {
+    return this.model.transfer(pose).formants;
+  }
+
   resetTrails() {
     this.renderer = new AnatomyRenderer();
     this.renderer.resize(600, 368);

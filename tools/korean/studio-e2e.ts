@@ -63,8 +63,8 @@ try {
     await page.getByRole("tab", { name: "텍스트 읽기" }).click();
     const wordFlow = await flow.evaluate(values => values.splice(0));
     assert.ok(wordFlow.some(u => Math.abs(u) > 1));
-    assert.equal(await page.getByLabel("음색").inputValue(), voice);
-    await page.getByLabel("음색").selectOption("male");
+    assert.equal(await page.getByLabel("음색", { exact: true }).inputValue(), voice);
+    await page.getByLabel("음색", { exact: true }).selectOption("male");
     await page.locator("#tts-input").fill("같이 먹어?");
     await page.locator("#tts-start").click();
     await page.locator("#tts-status", { hasText: "재생 완료" }).waitFor();
@@ -72,6 +72,27 @@ try {
     assert.ok(sentenceFlow.some(u => Math.abs(u) > 1));
     assert.equal(await page.locator("#lip-flow").textContent(), "—");
     assert.deepEqual(await particleInk.evaluate(ink => [...ink].sort()), ["prepare-panel", "tts-panel"]);
+    await page.getByRole("tab", { name: "음색 비교" }).click();
+    await page.locator("#speaker-controls:visible").waitFor();
+    const values = async (selector: string) =>
+      (await page.locator(".speaker-card " + selector).allTextContents()).map(parseFloat);
+    const lengths = await values(".tract"), pitches = await values(".pitch");
+    assert.equal(lengths.length, 3);
+    assert.ok(lengths[0] > lengths[1] && lengths[1] > lengths[2]);
+    assert.ok(pitches[0] < pitches[1] && pitches[1] < pitches[2]);
+    await page.locator("#speaker-vowel").selectOption({ index: 1 });
+    await page.getByRole("button", { name: "성인 여성 듣기" }).click();
+    await page.locator("#speaker-status", { hasText: "성인 여성 재생 중" }).waitFor();
+    await page.getByRole("button", { name: "아동 듣기" }).click();
+    await page.locator("#speaker-status", { hasText: "아동 재생 완료" }).waitFor();
+    await page.locator("#speaker-text").fill("시와 씨");
+    assert.ok(await page.locator("#speaker-controls").isHidden());
+    await page.getByRole("button", { name: "비교하기" }).click();
+    await page.locator("#speaker-controls:visible").waitFor();
+    await page.getByRole("button", { name: "성인 남성 듣기" }).click();
+    await page.getByRole("tab", { name: "첫 입모양" }).click();
+    await page.locator("#prepare-panel:visible").waitFor();
+    assert.ok(await page.locator("#speaker-stop").isDisabled());
     assert.deepEqual(errors, []);
     await page.close();
   }

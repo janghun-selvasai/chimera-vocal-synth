@@ -338,9 +338,11 @@ async function main() {
   let comparison: Awaited<ReturnType<typeof loadComparison>> | undefined;
   let loading: ReturnType<typeof loadComparison> | undefined;
   let navigation = 0;
+  let speakers: ReturnType<typeof import("./speakers.ts").setupSpeakers> | undefined;
   async function select(id: string) {
     const current = ++navigation;
     studio.stop();
+    speakers?.leave();
     comparison?.stop();
     for (const tab of tabs) {
       const selected = tab.id === id;
@@ -351,6 +353,13 @@ async function main() {
     status.hidden = true;
     if (id === "tts" || id === "prepare") {
       studio.show(id);
+      return;
+    }
+    if (id === "speakers") {
+      const { setupSpeakers } = await import("./speakers.ts");
+      if (current !== navigation) return;
+      speakers ??= setupSpeakers();
+      speakers.show();
       return;
     }
     if (!comparison) {
