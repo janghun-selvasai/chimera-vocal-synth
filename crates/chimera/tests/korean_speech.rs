@@ -87,6 +87,56 @@ fn fortis_adduction_replaces_only_the_stop_opening_and_survives_sandhi() {
 }
 
 #[test]
+fn korean_transcription_covers_modern_syllables_and_intervocalic_onsets() {
+    // Unicode order. The entries are the expected displayed phones, independent
+    // of the inventory keys used by the synthesizer.
+    let initial = ["k", "k͈", "n", "t", "t͈", "ɾ", "m", "p", "p͈", "s", "s͈", "", "tɕ", "tɕ͈", "tɕʰ", "kʰ", "tʰ", "pʰ", "h"];
+    let medial = ["g", "k͈", "n", "d", "t͈", "ɾ", "m", "b", "p͈", "s", "s͈", "", "dʑ", "tɕ͈", "tɕʰ", "kʰ", "tʰ", "pʰ", "ɦ"];
+    let vowels = ["a", "ɛ", "ja", "jɛ", "ʌ", "e", "jʌ", "je", "o", "wa", "wɛ", "we", "jo", "u", "wʌ", "we", "wi", "ju", "ɯ", "ɰi", "i"];
+    let codas = ["", "k", "k", "k", "n", "n", "n", "t", "l", "k", "m", "l", "l", "l", "p", "l", "m", "p", "p", "t", "t", "ŋ", "t", "t", "k", "t", "p", "t"];
+    for (i, onset) in initial.iter().enumerate() {
+        for (j, &vowel) in vowels.iter().enumerate() {
+            for (k, &coda) in codas.iter().enumerate() {
+                let syllable = char::from_u32(0xac00 + (i * 588 + j * 28 + k) as u32).unwrap();
+                for (prefix, consonant) in [("", *onset), ("아", medial[i])] {
+                    let word = format!("{prefix}{syllable}");
+                    let phrase = &phrases(&word)[0];
+                    let actual: String = phrase.segments.iter().map(|s| s.display_ipa.as_deref().unwrap_or(&s.ipa)).collect();
+                    let nucleus = if j == 19 && i != 11 { "i" } else { vowel };
+                    let palatal = nucleus.starts_with('j') || nucleus == "i";
+                    let onset = match (consonant, palatal) {
+                        ("s", true) => "ɕ", ("s͈", true) => "ɕ͈", (other, _) => other
+                    };
+                    let lead = if prefix.is_empty() { "" } else { "a" };
+                    assert_eq!(actual, format!("{lead}{onset}{nucleus}{coda}"), "{word}");
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn korean_surface_labels_follow_sound_changes_and_explicit_breaks() {
+    for (text, expected) in [
+        ("불, 풀, 뿔", "pul|pʰul|p͈ul"), ("저기 불", "tɕʌgibul"),
+        ("달, 탈, 딸", "tal|tʰal|t͈al"), ("굴, 쿨, 꿀", "kul|kʰul|k͈ul"),
+        ("자, 차, 짜", "tɕa|tɕʰa|tɕ͈a"),
+        ("같이 먹어?", "katɕʰimʌgʌ"), ("국물", "kuŋmul"), ("국밥", "kukp͈ap"),
+        ("좋다", "tɕotʰa"), ("국수", "kuks͈u"), ("값이", "kapɕ͈i"),
+        ("넋이", "nʌkɕ͈i"), ("곬이", "kolɕ͈i"), ("옷 안", "odan"), ("옷, 안", "ot|an"),
+        ("굳히다", "kutɕʰida"), ("닫히다", "tatɕʰida"),
+        ("곧 히죽", "kotʰidʑuk"), ("곧, 히죽", "kot|hidʑuk"),
+    ] {
+        let actual = phrases(text).iter().map(|p| {
+            let plan = plan_utterance(&p.segments, &PlanOptions::default());
+            assert!(plan.segments.iter().all(|s| s.kind != "?"), "{text}");
+            plan.segments.iter().map(|s| s.display_ipa.as_deref().unwrap_or(&s.ipa)).collect::<String>()
+        }).collect::<Vec<_>>().join("|");
+        assert_eq!(actual, expected, "{text}");
+    }
+}
+
+#[test]
 fn matched_ablation_changes_only_selected_gestures() {
     for text in ["불", "풀", "뿔", "달", "탈", "딸"] {
         let plans: Vec<_> = [Condition::Vot, Condition::Pitch, Condition::Full]

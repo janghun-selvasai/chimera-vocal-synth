@@ -39,11 +39,11 @@ const CHART: [string, (string | null)[][]][] = [
 ];
 
 /** the segment sounding now in the current utterance */
-function soundingSegment(): string | null {
+function soundingSegment() {
   const sp = currentPlan();
   const now = planNow(sp);
   if (!sp || now < 0) return null;
-  return sp.plan.segments.find((s) => now >= s.t0 && now < s.t1)?.ipa ?? null;
+  return sp.plan.segments.find((s) => now >= s.t0 && now < s.t1) ?? null;
 }
 
 /** Speak mode's readouts under the chin: the sound being made, jaw, lip shape, soft palate */
@@ -54,7 +54,7 @@ export const speechSlots: SlotsFn = (_m, a, f) => {
   const sound = soundingSegment();
   const lips = a.lipAp < 0.05 ? "Closed" : a.lipWidth < 0.55 ? "Round" : a.lipAp > 1.3 ? "Open" : "Spread";
   return [
-    sound ? { label: "Sound", value: sound, color: V.green, ipa: true } : { label: "Sound", value: "-", color: V.green },
+    sound ? { label: "Sound", value: sound.displayIpa ?? sound.ipa, color: V.green, ipa: true } : { label: "Sound", value: "-", color: V.green },
     { label: "Jaw", value: a.jaw.toFixed(1), unit: "cm", color: V.red },
     { label: "Lips", value: lips, color: V.pink },
     { label: "Soft palate", value: f.velumPort > 0.02 ? "Open" : "Shut", color: V.white },
@@ -77,7 +77,7 @@ export const speechInfo: InfoFn = (m, _f, tele) => {
 function ConsonantChart(props: { onPad: (c: string) => void }) {
   const [now, setNow] = useState<string | null>(null);
   useEffect(() => {
-    const id = setInterval(() => setNow(engine.latest ? soundingSegment() : null), 60);
+    const id = setInterval(() => setNow(engine.latest ? soundingSegment()?.ipa ?? null : null), 60);
     return () => clearInterval(id);
   }, []);
   return (

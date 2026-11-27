@@ -151,6 +151,10 @@ fn dispatch(st: &mut State, req: &Value) -> Res {
             to_json(&phrases_with(&arg::<String>(req, "text")?, arg::<Option<Condition>>(req, "condition")?.unwrap_or(Condition::Clear)))
         }
         "koSpeaker" => to_json(&chimera::phonetics::korean::speech::studio_source(arg(req, "body")?)),
+        "koSegmentLabels" => {
+            let segments = arg::<Vec<chimera::phonetics::Segment>>(req, "segments")?;
+            to_json(&segments.iter().map(chimera::phonetics::korean::speech::marked_ipa).collect::<Vec<_>>())
+        }
         "trPhrases" => to_json(&turkish::to_phrases(&arg::<String>(req, "text")?)),
         // ---------------------------------------------------------------- creatures
         "creaturePreview" => {

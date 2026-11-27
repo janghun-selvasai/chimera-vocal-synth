@@ -7,6 +7,18 @@ const { guideFrame, movingParts, STEP_SECONDS } =
   await import("../src/korean/poseGuide.ts");
 const { ARTIC_KEYS, NEUTRAL } = await import("../src/wasm/engine.ts");
 
+test("old Korean traces recover contrasts from recorded controls, including the short lenis aspiration", async () => {
+  const { koreanTranscript } = await import("../src/korean/readRender.ts");
+  const keys = ["p", "p", "p", "s", "s"];
+  const timeline = keys.map((ipa, i) => ({ ipa, t0: i, t1: i + 1, kind: i < 3 ? "stop" : "fricative" }));
+  const trace = koreanTranscript(timeline, [{ segments: [
+    { ipa: "p", aspirated: true, vot: 0.045 }, { ipa: "p", aspirated: true, vot: 0.09 },
+    { ipa: "p", aspirated: false },
+  ] }, { segments: [{ ipa: "s" }, { ipa: "s", pressedRelease: true }] }]);
+  expect(trace.ipa).toBe("p pʰ p͈ | s s͈");
+  expect(koreanTranscript(timeline).ipa).toBe("p p p s s");
+});
+
 test("the Korean timeline preserves the tense sibilant after planning", async () => {
   const signal = new AbortController().signal;
   const take = await synthesize("살과 쌀이 달라요.", false, signal);

@@ -1,6 +1,25 @@
 /** Import one native 'render korean ... --trace' triplet, including float WAVs. */
 import { TeleTrack } from "../show/tele.ts";
+import { call } from "../wasm/chimera.ts";
+import type { PlannedSegment, Segment } from "../wasm/types.ts";
 import type { Take } from "./lab.ts";
+
+/** Older native traces have the recorded controls but only bare inventory IDs on the timeline. */
+export function koreanTranscript(timeline: PlannedSegment[], phrases: { segments: Segment[] }[] = []) {
+  const phones = phrases.flatMap(p => p.segments);
+  const show = (s: PlannedSegment) => s.displayIpa ?? s.ipa;
+  if (phones.length !== timeline.length || !phones.every((s, i) => s.ipa === timeline[i].ipa)) {
+    return { segments: timeline, ipa: timeline.map(show).join(" ") };
+  }
+  const marks = call<(string | null)[]>("koSegmentLabels", { segments: phones });
+  const segments = timeline.map((s, i) => {
+    const mark = marks[i];
+    return mark && !s.displayIpa ? { ...s, displayIpa: mark } : s;
+  });
+  let i = 0;
+  const ipa = phrases.map(p => p.segments.map(() => show(segments[i++])).join(" ")).join(" | ");
+  return { segments, ipa };
+}
 
 function base64(bytes: Uint8Array): string {
   let raw = "";
@@ -70,7 +89,7 @@ export async function readRender(
       wav: base64(new Uint8Array(wav)),
       tele: base64(new Uint8Array(tele)),
       length: n / fs,
-      segments: d.plan.segments,
+      ...koreanTranscript(d.plan.segments, d.phrases),
       metrics: {},
       envelope,
       pitch: probes
@@ -79,7 +98,6 @@ export async function readRender(
       voiced: probes.map((p) => p[2] >= 0.2 ? "1" : "0").join(""),
       glottal: probes.map((p) => p[4]),
       rms: Math.sqrt(energy / n),
-      ipa: d.plan.segments.map((s: { ipa: string; displayIpa?: string }) => s.displayIpa ?? s.ipa).join(" "),
     },
   };
 }

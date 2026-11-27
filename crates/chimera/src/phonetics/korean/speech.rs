@@ -43,6 +43,18 @@ pub fn is_korean_text(text: &str) -> bool {
     text.chars().any(is_hangul) && text.chars().all(|c| !c.is_alphanumeric() || is_hangul(c))
 }
 
+/// Contrast markers realized by a Korean segment's laryngeal controls. Old
+/// traces retain these controls even when their timeline has only inventory IPA.
+pub fn marked_ipa(s: &Segment) -> Option<String> {
+    let mark = match s.ipa.as_str() {
+        "p" | "t" | "k" | "tɕ" if s.aspirated == Some(false) => "͈",
+        "p" | "t" | "k" | "tɕ" if s.aspirated == Some(true) && s.vot == Some(super::ASPIRATED_VOT) => "ʰ",
+        "s" | "ɕ" if s.pressed_release => "͈",
+        _ => return None,
+    };
+    Some(format!("{}{mark}", s.ipa))
+}
+
 fn connected(words: &[String], clear: bool) -> Vec<Syllable> {
     let mut blocks = Vec::new();
     let mut ends = Vec::new();
@@ -60,7 +72,7 @@ fn connected(words: &[String], clear: bool) -> Vec<Syllable> {
                 .collect();
         }
     }
-    let blocks = pronounced_blocks(blocks);
+    let blocks = pronounced_blocks(blocks, &ends);
     let mut syllables = syllables_from_pronounced(&blocks);
     if clear {
         for (i, (block, syllable)) in blocks.iter().zip(&mut syllables).enumerate() {
@@ -70,9 +82,6 @@ fn connected(words: &[String], clear: bool) -> Vec<Syllable> {
             let fortis = block.onset == Some('ㅆ');
             let s = &mut syllable.onset[0];
             s.pressed_release = fortis;
-            if fortis {
-                s.display_ipa = Some(format!("{}͈", s.ipa));
-            }
             if i == 0 {
                 // Rounded experimental targets from Chang (2013), Figs 2–3. The high-front
                 // context has a smaller contrast than the open vowel. Interpolate other vowels
@@ -134,6 +143,11 @@ fn plan_group(words: Vec<String>, boundary: char, condition: Condition) -> Phras
             }
             stop.pressed_release = fortis && (clear || matches!(condition, Full | Medial));
             stop.adducted_stop = condition == Adducted && fortis && matches!(stop.ipa.as_str(), "p" | "t" | "k");
+        }
+        // Mark the realized onset after liaison, voicing and tensification. A
+        // lenis stop may also aspirate initially, but has its own shorter VOT.
+        if let Some(onset) = syl.onset.first_mut() {
+            onset.display_ipa = marked_ipa(onset);
         }
         segments.extend(syl.onset);
         segments.push(syl.nucleus);

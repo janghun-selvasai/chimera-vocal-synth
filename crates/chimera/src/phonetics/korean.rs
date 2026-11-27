@@ -140,7 +140,7 @@ fn tense(c: char) -> char {
 }
 
 /// Apply the sound rules at the boundary between block `a` and the next block `b`.
-fn join(a: &mut Block, b: &mut Block) {
+fn join(a: &mut Block, b: &mut Block, inside_word: bool) {
     // a coda before a silent ㅇ moves over (ㅎ drops, ㅇ stays: 좋아 → 조아, 빵야 → 빵야); after a
     // dropped ㅎ the consonant before it moves (싫어 → 시러, 많아 → 마나), and ㄷ ㅌ moving onto
     // 이 palatalise (굳이 → 구지, 같이 → 가치)
@@ -152,6 +152,8 @@ fn join(a: &mut Block, b: &mut Block) {
             let c = a.coda.pop().unwrap();
             let before_i = b.vowel == "i" && b.glide.is_empty();
             b.onset = Some(match c {
+                // Standard Pronunciation 14: the ㅅ in ㄳ, ㄽ and ㅄ moves as ㅆ.
+                'ㅅ' if !a.coda.is_empty() => 'ㅆ',
                 'ㄷ' if before_i => 'ㅈ',
                 'ㅌ' if before_i => 'ㅊ',
                 _ => c,
@@ -186,6 +188,13 @@ fn join(a: &mut Block, b: &mut Block) {
             return;
         }
         a.coda = vec!['ㅂ'];
+    }
+    // Standard Pronunciation 17: an attached 히 after ㄷ gives ㅊ (닫히다).
+    // A new word beginning with 히 is not a suffix.
+    if inside_word && a.coda == ['ㄷ'] && b.text == '히' {
+        a.coda.clear();
+        b.onset = Some('ㅊ');
+        return;
     }
     let Some(c) = simplify(&a.coda).map(neutral) else { return };
     a.coda = vec![c];
@@ -280,10 +289,10 @@ pub fn word_syllables(word: &str) -> Vec<Syllable> {
     syllables_from_blocks(compose(word).chars().filter(|&c| is_hangul(c)).map(decompose).collect())
 }
 
-fn pronounced_blocks(mut blocks: Vec<Block>) -> Vec<Block> {
+fn pronounced_blocks(mut blocks: Vec<Block>, word_ends: &[usize]) -> Vec<Block> {
     for i in 1..blocks.len() {
         let (l, r) = blocks.split_at_mut(i);
-        join(l.last_mut().unwrap(), &mut r[0]);
+        join(l.last_mut().unwrap(), &mut r[0], word_ends.binary_search(&(i - 1)).is_err());
     }
     if let Some(last) = blocks.last_mut() {
         last.coda = simplify(&last.coda).map(neutral).into_iter().collect();
@@ -292,7 +301,7 @@ fn pronounced_blocks(mut blocks: Vec<Block>) -> Vec<Block> {
 }
 
 fn syllables_from_blocks(blocks: Vec<Block>) -> Vec<Syllable> {
-    syllables_from_pronounced(&pronounced_blocks(blocks))
+    syllables_from_pronounced(&pronounced_blocks(blocks, &[]))
 }
 
 fn syllables_from_pronounced(blocks: &[Block]) -> Vec<Syllable> {
