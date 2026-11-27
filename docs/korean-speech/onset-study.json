@@ -1,0 +1,31 @@
+{
+  "baseline": "90a5df8d51e0b9cca91960677a3e41ce7c58cf93",
+  "condition": "adducted",
+  "voices": [
+    "male",
+    "female",
+    "child"
+  ],
+  "words": [
+    "부",
+    "푸",
+    "뿌",
+    "불",
+    "풀",
+    "뿔"
+  ],
+  "development": "저기 {} 보여?",
+  "holdout": "이번에는 {} 차례야.",
+  "question": "같이 먹어?",
+  "transfer": [
+    "우리도 같이 먹어?",
+    "우리도 같이 먹어."
+  ],
+  "guards": [
+    "달, 탈, 딸.",
+    "살과 쌀이 달라요.",
+    "먹어. 같이. 국물."
+  ],
+  "selection": "Select candidates on isolated recordings and development only. Lock before opening holdout. Inspect burst level and breath relative to the same vowel, periodicity delay, relative F0 and spectral tilt. Inspect lax→tense and tense→lax separately. One recorded token per speaker and word; acoustic distance is not a listening score. Preserve public defaults when gains conflict. Use identical gains across variants.",
+  "referenceScope": "Only the six isolated words and 같이 먹어? have human references. No real speech is archived in Git."
+}
