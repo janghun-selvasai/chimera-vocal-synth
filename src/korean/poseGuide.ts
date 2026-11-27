@@ -1,5 +1,7 @@
 import { NEUTRAL, type ArticKey, type HumanArtic } from "../wasm/engine.ts";
 import { VoiceModel } from "../ui/analysis.ts";
+import { PRESETS, sameBody, type BodyMix } from "../ui/body.ts";
+import type { TelemetryMessage } from "../worklet/protocol.ts";
 import { AnatomyRenderer, type HandleId } from "../ui/render/anatomy.ts";
 
 interface Part {
@@ -63,14 +65,30 @@ export function guideFrame(target: HumanArtic, steps: Part[], elapsed: number) {
 type GuideFrame = ReturnType<typeof guideFrame>;
 
 export class MouthStage {
-  private model = new VoiceModel({ female: 0, child: 0 }, 48000);
+  private model = new VoiceModel(PRESETS.male, 48000);
   private renderer = new AnatomyRenderer();
   closeUp = false;
   constructor(private canvas: HTMLCanvasElement) {
     this.renderer.resize(600, 368);
   }
 
-  draw(pose: HumanArtic, dt = 0, guide?: GuideFrame) {
+  setBody(body: BodyMix) {
+    if (sameBody(this.model.body, body)) return;
+    this.model.dispose();
+    this.model = new VoiceModel(body, 48000);
+  }
+
+  resetTrails() {
+    this.renderer = new AnatomyRenderer();
+    this.renderer.resize(600, 368);
+  }
+
+  draw(
+    pose: HumanArtic,
+    dt = 0,
+    guide?: GuideFrame,
+    telemetry: TelemetryMessage | null = null,
+  ) {
     const c = this.canvas,
       box = c.getBoundingClientRect();
     if (!box.width || !box.height) return;
@@ -105,8 +123,8 @@ export class MouthStage {
       this.model,
       frame,
       pose,
-      null,
-      { pressure: false, particles: false, grid: false, calipers: false },
+      telemetry,
+      { pressure: true, particles: true, grid: false, calipers: false },
       { hover: null, drag: null, dt, formants: [], slots: [], info: [] },
     );
     const part = guide?.part;

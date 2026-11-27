@@ -9,11 +9,23 @@ import {
 } from "../wasm/engine.ts";
 import { writeGestures } from "../wasm/wire.ts";
 import { VoiceModel } from "../ui/analysis.ts";
-import { TELE_HEADER } from "../worklet/telemetry.ts";
+import { PRESETS } from "../ui/body.ts";
+import type { BodyName, TelemetryMessage } from "../worklet/protocol.ts";
+import {
+  decodeTelemetry,
+  TELE_HEADER,
+  TELE_LABELS,
+  telemetryLength,
+} from "../worklet/telemetry.ts";
 
 const RATE = 48000;
 const STRIDE = 480; // One model pose per 10 ms of the actual output.
-const BODY = { female: 0, child: 0 };
+// Speaking pitches used by the Korean CLI renders (chimera-cli::render::text_f0).
+const SPEAKING_F0: Record<BodyName, number> = {
+  male: 112,
+  female: 205,
+  child: 250,
+};
 type VoiceExports = { memory: WebAssembly.Memory } & Record<
   string,
   (...args: number[]) => number
@@ -22,7 +34,7 @@ type VoiceExports = { memory: WebAssembly.Memory } & Record<
 export interface Utterance {
   samples: Float32Array<ArrayBuffer>;
   rate: number;
-  poses: HumanArtic[];
+  frames: TelemetryMessage[];
   first: string;
   segments: { ipa: string; start: number; end: number }[];
 }
@@ -70,12 +82,15 @@ export async function synthesize(
   text: string,
   prepare: boolean,
   signal: AbortSignal,
+  voice: BodyName = "male",
 ): Promise<Utterance> {
+  const body = PRESETS[voice];
+  const f0 = SPEAKING_F0[voice];
   const phrases = koreanPhrases(text);
   const plan = planPhrases(phrases, {
-    body: BODY,
+    body,
     t0: prepare ? 0.3 : 0.08,
-    f0: 112,
+    f0,
   });
   const first = plan.segments[0];
   if (!first) throw new Error("발음할 수 있는 한글을 입력해 주세요.");
@@ -102,12 +117,13 @@ export async function synthesize(
     .exports as unknown as VoiceExports;
   const h = x.engine_new(RATE);
   try {
+    if (voice !== "male") x.engine_set_body(h, body.female, body.child);
     const source = new Float64Array(
       x.memory.buffer,
       x.engine_values(h),
       32,
     ).fill(NaN);
-    source[0] = 112;
+    source[0] = f0;
     source[2] = 7.2;
     x.engine_set_source(h);
     const count = writeGestures(
@@ -124,20 +140,23 @@ export async function synthesize(
     const samples = new Float32Array(
       Math.ceil((plan.end + 0.16) * RATE) - skip,
     );
-    const poses: HumanArtic[] = [];
-    const readPose = () => {
-      const p = x.engine_telemetry(h) + 8 * TELE_HEADER;
-      return VoiceModel.articFromArray(
-        new Float64Array(x.memory.buffer, p, ARTIC_KEYS.length),
+    const readFrame = (): TelemetryMessage => {
+      const p = x.engine_telemetry(h);
+      const memory = x.memory.buffer;
+      const length = telemetryLength(new Float64Array(memory, p, TELE_HEADER));
+      const frame = decodeTelemetry(
+        new Float64Array(memory, p, length),
+        new Uint8Array(memory, x.engine_tele_labels(h), TELE_LABELS),
       );
+      return { ...frame, type: "telemetry", body, load: 0, beatStep: -1 };
     };
-    poses.push(readPose());
+    const frames = [readFrame()];
     let lastYield = performance.now();
     for (let i = 0; i < samples.length; i += STRIDE) {
       const size = Math.min(STRIDE, samples.length - i);
       const p = x.engine_render(h, size);
       samples.set(new Float32Array(x.memory.buffer, p, size), i);
-      poses.push(readPose());
+      frames.push(readFrame());
       if (performance.now() - lastYield > 14) {
         await new Promise<void>((resolve) => setTimeout(resolve, 0));
         signal.throwIfAborted();
@@ -147,7 +166,7 @@ export async function synthesize(
     return {
       samples,
       rate: RATE,
-      poses,
+      frames,
       first: first.ipa,
       segments: plan.segments.map((s) => ({
         ipa: s.ipa,
@@ -160,13 +179,25 @@ export async function synthesize(
   }
 }
 
-export function poseAt(utterance: Utterance, seconds: number): HumanArtic {
-  const index = Math.max(0, (seconds * RATE) / STRIDE);
-  const i = Math.min(Math.floor(index), utterance.poses.length - 1);
-  const a = utterance.poses[i],
-    b = utterance.poses[i + 1];
-  if (!b) return a;
-  const pose = { ...a };
-  for (const key of ARTIC_KEYS) pose[key] += (b[key] - a[key]) * (index - i);
-  return pose;
+/** Interpolate the pose on the PCM clock. Flow and pressure use the most recent measured frame. */
+export function playbackAt(take: Utterance, seconds: number) {
+  const sample = Math.min(
+    take.samples.length,
+    Math.max(0, seconds * take.rate),
+  );
+  const i =
+    sample >= take.samples.length
+      ? take.frames.length - 1
+      : Math.floor(sample / STRIDE);
+  const telemetry = take.frames[i];
+  const pose = VoiceModel.articFromArray(telemetry.t.artic);
+  const next = take.frames[i + 1];
+  if (next) {
+    const span = Math.min(STRIDE, take.samples.length - i * STRIDE);
+    const fraction = (sample - i * STRIDE) / span;
+    ARTIC_KEYS.forEach((key, j) => {
+      pose[key] += (next.t.artic[j] - pose[key]) * fraction;
+    });
+  }
+  return { telemetry, pose };
 }

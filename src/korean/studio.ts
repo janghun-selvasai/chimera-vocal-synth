@@ -1,8 +1,10 @@
 import { NEUTRAL } from "../wasm/engine.ts";
+import { PRESETS } from "../ui/body.ts";
+import type { BodyName, TelemetryMessage } from "../worklet/protocol.ts";
 import {
   synthesize,
   validateInput,
-  poseAt,
+  playbackAt,
   type Utterance,
 } from "./synthesize.ts";
 import {
@@ -23,6 +25,9 @@ export function setupStudio() {
   const title = el("stage-state"),
     phones = el("live-phones"),
     progress = el("stage-progress");
+  const voiceSelect = el<HTMLSelectElement>("studio-voice");
+  const voice = () => voiceSelect.value as BodyName;
+  const lipFlow = el("lip-flow");
   let mode: StudioMode = "tts",
     ctx: AudioContext | undefined;
   let job: AbortController | undefined,
@@ -30,6 +35,7 @@ export function setupStudio() {
     raf = 0;
   let lastPose = { ...NEUTRAL },
     lastGuide: ReturnType<typeof guideFrame> | undefined;
+  let lastFrame: TelemetryMessage | null = null;
   const status = () => el(mode + "-status");
   const stopButton = () =>
     el(mode + "-form").querySelector<HTMLButtonElement>(".stop")!;
@@ -37,10 +43,14 @@ export function setupStudio() {
     pose = lastPose,
     dt = 0,
     guide?: ReturnType<typeof guideFrame>,
+    frame: TelemetryMessage | null = null,
   ) {
     lastPose = pose;
     lastGuide = guide;
-    stage.draw(pose, dt, guide);
+    lastFrame = frame;
+    const flow = frame?.t.flow.at(-1);
+    lipFlow.textContent = flow === undefined ? "—" : flow.toFixed(1);
+    stage.draw(pose, dt, guide, frame);
   }
   function setProgress(value: number) {
     const percent = Math.round(100 * Math.max(0, Math.min(1, value)));
@@ -71,6 +81,10 @@ export function setupStudio() {
     reset();
     mode = next;
     stage.closeUp = next === "prepare";
+    el(next + "-form")
+      .querySelector(".transport")!
+      .before(el("studio-voice-field"));
+    stage.setBody(PRESETS[voice()]);
     el(next + "-panel").append(view);
     view.hidden = false;
     reset();
@@ -83,6 +97,7 @@ export function setupStudio() {
     node.buffer = buffer;
     node.connect(ctx!.destination);
     source = node;
+    stage.resetTrails();
     const started = ctx!.currentTime;
     const symbols = take.segments.map((s) => {
       const span = document.createElement("span");
@@ -103,7 +118,13 @@ export function setupStudio() {
         symbols[index]?.classList.add("active");
         previousPhone = index;
       }
-      draw(poseAt(take, t), Math.max(0, Math.min(0.05, t - previous)));
+      const { pose, telemetry } = playbackAt(take, t);
+      draw(
+        pose,
+        Math.max(0, Math.min(0.05, t - previous)),
+        undefined,
+        telemetry,
+      );
       previous = t;
       setProgress(t / buffer.duration);
       raf = requestAnimationFrame(tick);
@@ -115,7 +136,7 @@ export function setupStudio() {
       source = undefined;
       job = undefined;
       symbols[previousPhone]?.classList.remove("active");
-      draw(take.poses[take.poses.length - 1]);
+      draw(playbackAt(take, buffer.duration).pose);
       setProgress(1);
       title.textContent = "완료";
       status().textContent = "재생 완료";
@@ -129,7 +150,7 @@ export function setupStudio() {
     signal: AbortSignal,
     fail: (e: unknown) => void,
   ) {
-    const target = take.poses[0];
+    const target = playbackAt(take, 0).pose;
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const steps = reduce ? [] : movingParts(target);
     const total = steps.length * STEP_SECONDS + HOLD_SECONDS;
@@ -198,7 +219,7 @@ export function setupStudio() {
       status().textContent = "음성을 합성하는 중…";
       title.textContent = "합성 중";
       const [take] = await Promise.all([
-        synthesize(text, mode === "prepare", active.signal),
+        synthesize(text, mode === "prepare", active.signal, voice()),
         ready,
       ]);
       active.signal.throwIfAborted();
@@ -232,7 +253,13 @@ export function setupStudio() {
     }
     el<HTMLButtonElement>(tab + "-start").disabled = false;
   }
-  new ResizeObserver(() => stage.draw(lastPose, 0, lastGuide)).observe(view);
+  voiceSelect.onchange = () => {
+    stage.setBody(PRESETS[voice()]);
+    reset();
+  };
+  new ResizeObserver(() =>
+    stage.draw(lastPose, 0, lastGuide, lastFrame),
+  ).observe(view);
   window.addEventListener("pagehide", stop);
   return { show, stop };
 }
