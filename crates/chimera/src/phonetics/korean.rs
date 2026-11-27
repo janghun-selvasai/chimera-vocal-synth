@@ -139,6 +139,12 @@ fn tense(c: char) -> char {
     }
 }
 
+/// Common predicate stems with final ㄺ, also at the end of prefixed stems.
+/// Nouns such as 닭, 흙, 칡 and 삵 follow ordinary coda simplification.
+fn lg_predicate_stem(letter: char) -> bool {
+    matches!(letter, '갉' | '굵' | '긁' | '낡' | '늙' | '맑' | '묽' | '밝' | '붉' | '얽' | '옭' | '읽')
+}
+
 /// Apply the sound rules at the boundary between block `a` and the next block `b`.
 fn join(a: &mut Block, b: &mut Block, inside_word: bool) {
     // a coda before a silent ㅇ moves over (ㅎ drops, ㅇ stays: 좋아 → 조아, 빵야 → 빵야); after a
@@ -176,6 +182,21 @@ fn join(a: &mut Block, b: &mut Block, inside_word: bool) {
             _ => aspirated(o).unwrap_or(o),
         });
         if a.coda.is_empty() {
+            return;
+        }
+    }
+    if inside_word && lg_predicate_stem(a.text) {
+        // Rule 11: retain ㄹ and tense the following ㄱ (읽고, 밝기).
+        // Attached -히- also retains ㄹ while ㄱ+ㅎ gives ㅋ, including
+        // contracted 혀/혔 and closed syllables such as 힌 (읽혀, 긁힌).
+        let onset = match (b.onset, b.glide, b.vowel) {
+            (Some('ㄱ'), _, _) => Some('ㄲ'),
+            (Some('ㅎ'), "", "i") | (Some('ㅎ'), "j", "ʌ") => Some('ㅋ'),
+            _ => None,
+        };
+        if let Some(onset) = onset {
+            a.coda.truncate(1);
+            b.onset = Some(onset);
             return;
         }
     }

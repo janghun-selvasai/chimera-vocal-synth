@@ -137,6 +137,38 @@ fn korean_surface_labels_follow_sound_changes_and_explicit_breaks() {
 }
 
 #[test]
+fn predicate_lg_depends_on_the_stem_and_the_following_sound() {
+    use chimera::phonetics::korean::word_syllables;
+
+    let sung = |word: &str| {
+        word_syllables(word).into_iter()
+            .map(|s| (s.onset, s.nucleus, s.coda)).collect::<Vec<_>>()
+    };
+    let spoken = |text: &str| {
+        phrases(text).into_iter().map(|p| p.segments).collect::<Vec<_>>()
+    };
+    for (written, pronounced) in [
+        ("읽고", "일꼬"), ("읽거나", "일꺼나"), ("읽겠습니다", "일껟씀니다"),
+        ("맑게", "말께"), ("묽고", "물꼬"), ("밝기", "발끼"), ("긁개", "글깨"),
+        ("갉고", "갈꼬"), ("굵고", "굴꼬"), ("낡고", "날꼬"), ("늙고", "늘꼬"),
+        ("붉고", "불꼬"), ("얽고", "얼꼬"), ("옭고", "올꼬"),
+        ("읽히다", "일키다"), ("읽혀", "일켜"), ("밝혔다", "발켣따"), ("긁힌", "글킨"),
+        ("뒤얽히다", "뒤얼키다"), ("닭과", "닥꽈"), ("닭고기", "닥꼬기"),
+        ("흙길", "흑낄"), ("칡과", "칙꽈"), ("삵과", "삭꽈"), ("닭하고", "다카고"),
+        ("읽다", "익따"), ("읽어", "일거"), ("읽는", "잉는"), ("읽지", "익찌"),
+    ] {
+        assert_eq!(sung(written), sung(pronounced), "Sing: {written}");
+        assert_eq!(spoken(written), spoken(pronounced), "Speak: {written}");
+    }
+    for (text, reference) in [
+        ("책을 읽고", "책을 일꼬"), ("읽고, 닭과", "일꼬, 닥꽈"),
+        ("읽 고", "익 꼬"), ("읽, 고", "익, 고"), ("읽 히", "이 키"),
+    ] {
+        assert_eq!(spoken(text), spoken(reference), "word boundary: {text}");
+    }
+}
+
+#[test]
 fn matched_ablation_changes_only_selected_gestures() {
     for text in ["불", "풀", "뿔", "달", "탈", "딸"] {
         let plans: Vec<_> = [Condition::Vot, Condition::Pitch, Condition::Full]
