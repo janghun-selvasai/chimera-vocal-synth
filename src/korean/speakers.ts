@@ -1,6 +1,6 @@
 import { PRESETS } from "../ui/body.ts";
 import { MouthStage } from "./poseGuide.ts";
-import { synthesize, validateInput, playbackAt, type Utterance } from "./synthesize.ts";
+import { STUDIO_CONDITION, synthesize, validateInput, playbackAt, type Utterance } from "./synthesize.ts";
 
 const voices = [
   ["male", "성인 남성"],
@@ -33,7 +33,7 @@ export function setupSpeakers() {
     const stage = new MouthStage(card.querySelector("canvas")!);
     stage.setBody(PRESETS[id]);
     card.querySelector("button")!.onclick = () => void listen(index);
-    return { stage, card };
+    return { stage, card, time: 0 };
   });
 
   let takes: Utterance[] = [];
@@ -56,14 +56,24 @@ export function setupSpeakers() {
     for (const { card } of cards) card.classList.remove("playing");
   }
 
-  function draw(time: number, dt = 0) {
+  function draw(time: number, dt = 0, only?: number) {
     if (!takes.length) return;
     position = Math.min(duration(), Math.max(0, time));
     seek.value = String(position);
     byId("speaker-time").textContent = position.toFixed(2) + " / " + duration().toFixed(2) + "초";
     cards.forEach(({ stage }, i) => {
+      if (only !== undefined && i !== only) return;
+      cards[i].time = position;
       const { pose, telemetry } = playbackAt(takes[i], position);
       stage.draw(pose, dt, undefined, telemetry);
+    });
+  }
+
+  function redrawCards() {
+    cards.forEach(({ stage, time }, i) => {
+      if (!takes[i]) return;
+      const { pose, telemetry } = playbackAt(takes[i], time);
+      stage.draw(pose, 0, undefined, telemetry);
     });
   }
 
@@ -119,19 +129,19 @@ export function setupSpeakers() {
       node.connect(context.destination);
       source = node;
       const start = context.currentTime - playOffset;
-      for (const { stage } of cards) stage.resetTrails();
+      cards[index].stage.resetTrails();
       cards[index].card.classList.add("playing");
       status.textContent = voices[index][1] + " 재생 중";
       stopButton.disabled = false;
       const tick = () => {
         if (source !== node) return;
         const t = context!.currentTime - start;
-        draw(t, Math.min(0.05, Math.max(0, t - position)));
+        draw(t, Math.min(0.05, Math.max(0, t - position)), index);
         raf = requestAnimationFrame(tick);
       };
       node.onended = () => {
         stop();
-        draw(duration());
+        draw(take.samples.length / take.rate, 0, index);
         status.textContent = voices[index][1] + " 재생 완료";
       };
       node.start(0, playOffset);
@@ -160,7 +170,7 @@ export function setupSpeakers() {
       const rendered = [];
       for (const [id, name] of voices) {
         status.textContent = name + " 음성을 합성하는 중…";
-        rendered.push(await synthesize(text, false, controller.signal, id));
+        rendered.push(await synthesize(text, false, controller.signal, id, undefined, STUDIO_CONDITION));
       }
       controller.signal.throwIfAborted();
       takes = rendered;
@@ -193,11 +203,11 @@ export function setupSpeakers() {
   };
   stopButton.onclick = () => { stop(); status.textContent = "재생 정지"; };
   new ResizeObserver(() => {
-    if (!group.hidden && group.offsetWidth) draw(position);
+    if (!group.hidden && group.offsetWidth) redrawCards();
   }).observe(group);
   return {
     show() {
-      if (takes.length) { draw(position); status.textContent = "각 목소리의 듣기를 눌러 비교하세요."; }
+      if (takes.length) { redrawCards(); status.textContent = "각 목소리의 듣기를 눌러 비교하세요."; }
       else void build();
     },
     leave() { job?.abort(); stop(); },

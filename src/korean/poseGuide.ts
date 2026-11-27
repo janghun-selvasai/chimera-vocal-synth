@@ -68,6 +68,50 @@ export class MouthStage {
   private model = new VoiceModel(PRESETS.male, 48000);
   private renderer = new AnatomyRenderer();
   closeUp = false;
+  manualPart: HandleId | null = null;
+  film: number | null = null;
+  filmReading = "";
+  private anchors: { id: HandleId; x: number; y: number }[] = [];
+  private pixelsPerUnit = 1;
+
+  pick(x: number, y: number) {
+    return this.anchors
+      .map((a) => ({ ...a, distance: Math.hypot(a.x - x, a.y - y) }))
+      .filter((a) => a.distance <= 25)
+      .sort((a, b) => a.distance - b.distance)[0]?.id;
+  }
+
+  move(id: HandleId, origin: HumanArtic, dx: number, dy: number) {
+    const x = dx / this.pixelsPerUnit,
+      y = -dy / this.pixelsPerUnit;
+    const clamp = (v: number, lo: number, hi: number) =>
+      Math.max(lo, Math.min(hi, v));
+    const a = { ...origin };
+    switch (id) {
+      case "tongue":
+        a.tbX += x;
+        a.tbY += y;
+        break;
+      case "tip":
+        a.ttX += x;
+        a.ttY += y;
+        break;
+      case "lips":
+        a.lipAp = clamp(a.lipAp - y * 1.2, -0.4, 2.4);
+        a.lipProt = clamp(a.lipProt + x, -0.2, 1.5);
+        break;
+      case "jaw":
+        a.jaw = clamp(a.jaw - y, -0.1, 2.6);
+        break;
+      case "larynx":
+        a.larynx = clamp(a.larynx + y, -1.6, 1.6);
+        break;
+      case "velum":
+        a.velum = clamp(a.velum - y * 0.9, 0, 1.4);
+        break;
+    }
+    return a;
+  }
   constructor(private canvas: HTMLCanvasElement) {
     this.renderer.resize(600, 368);
   }
@@ -111,17 +155,58 @@ export class MouthStage {
     g.clearRect(0, 0, w, h);
     const r = this.renderer;
     // Centre the sagittal projection itself; the standard renderer also reserves a readout column.
-    const scale = this.closeUp
-      ? Math.min(h / 194, w / 250)
-      : Math.min(h / 365, w / 370);
-    const center = this.closeUp ? { x: 3.7, y: 6.9 } : { x: 0.8, y: 0 };
+    const frame = this.model.frame(pose);
+    // Travel along this rendered pose's airway, passing the narrowest oral section before the lips.
+    const grid = frame.grid;
+    let section = 0;
+    if (this.film !== null) {
+      const firstOral = Math.max(
+        1,
+        grid.findIndex((p) => p.s >= frame.pharynxLength),
+      );
+      let constriction = firstOral;
+      for (
+        let i = firstOral;
+        i < grid.length - 2 && grid[i].s < frame.teethS;
+        i++
+      )
+        if (grid[i].area < grid[constriction].area) constriction = i;
+      const stops = [
+        0,
+        Math.floor(firstOral / 2),
+        constriction,
+        grid.length - 1,
+      ];
+      const phase = Math.min(this.film * 4, 3.9999);
+      const i = Math.floor(phase);
+      section = Math.round(
+        lerp(
+          stops[i],
+          stops[Math.min(3, i + 1)],
+          ease((phase - i - 0.3) / 0.7),
+        ),
+      );
+    }
+    const scale =
+      this.film !== null
+        ? Math.min(h / 175, w / 240)
+        : this.closeUp
+          ? Math.min(h / 194, w / 250)
+          : Math.min(h / 365, w / 370);
+    const center =
+      this.film !== null
+        ? grid[section].mid
+        : this.closeUp
+          ? { x: 3.7, y: 6.9 }
+          : { x: 0.8, y: 0 };
     const ox = w / 2 - r.X(center) * scale;
-    const oy = this.closeUp
-      ? h / 2 - r.Y(center) * scale
-      : (h - 368 * scale) / 2;
+    const oy =
+      this.closeUp || this.film !== null
+        ? h / 2 - r.Y(center) * scale
+        : (h - 368 * scale) / 2;
     g.translate(ox, oy);
     g.scale(scale, scale);
-    const frame = this.model.frame(pose);
+    this.pixelsPerUnit = scale * r.pxPerCm * this.model.tract.scale;
     r.draw(
       g,
       this.model,
@@ -131,6 +216,58 @@ export class MouthStage {
       { pressure: true, particles: true, grid: false, calipers: false },
       { hover: null, drag: null, dt, formants: [], slots: [], info: [] },
     );
+    if (this.manualPart) {
+      this.anchors = r.handles(this.model, frame, pose).map(({ id, pos }) => {
+        const x = r.X(pos),
+          y = r.Y(pos);
+        g.beginPath();
+        g.arc(x, y, (id === this.manualPart ? 10 : 6) / scale, 0, 2 * Math.PI);
+        g.fillStyle = "#0e2735";
+        g.fill();
+        g.strokeStyle = parts.find((part) => part.id === id)!.color;
+        g.lineWidth = (id === this.manualPart ? 3 : 1.5) / scale;
+        g.stroke();
+        return { id, x: ox + x * scale, y: oy + y * scale };
+      });
+    }
+    if (this.film !== null && telemetry) {
+      const sample = grid[section];
+      g.lineWidth = 3 / scale;
+      g.strokeStyle = "#7ce3ca";
+      g.beginPath();
+      g.moveTo(r.X(frame.glottis), r.Y(frame.glottis));
+      for (const p of grid.slice(0, section + 1))
+        g.lineTo(r.X(p.mid), r.Y(p.mid));
+      g.stroke();
+      g.strokeStyle = "#ffc47e";
+      g.beginPath();
+      g.moveTo(r.X(sample.inner), r.Y(sample.inner));
+      g.lineTo(r.X(sample.outer), r.Y(sample.outer));
+      g.stroke();
+      g.beginPath();
+      g.arc(r.X(sample.mid), r.Y(sample.mid), 5 / scale, 0, Math.PI * 2);
+      g.fillStyle = "#fff2bf";
+      g.fill();
+      const t = telemetry.t;
+      const nodes = this.model.nodeS(t.phLen, t.orLen);
+      let node = 0;
+      for (let i = 1; i < nodes.length; i++)
+        if (Math.abs(nodes[i] - sample.s) < Math.abs(nodes[node] - sample.s))
+          node = i;
+      this.filmReading =
+        "단면 " +
+        sample.area.toFixed(2) +
+        " cm²  ·  압력 RMS " +
+        (0.1 * t.pressureRms[node]).toFixed(1) +
+        " Pa  ·  기류 " +
+        t.flow[node].toFixed(1) +
+        " cm³/s";
+      if (t.noiseLevel > 1 && t.noiseNode >= 0) {
+        const noiseS = this.model.branchS(t.noiseNode, t.phLen, t.orLen);
+        if (noiseS >= 0 && Math.abs(sample.s - noiseS) < 1.5)
+          this.filmReading += " · 이 부근에 난류 음원";
+      }
+    }
     const part = guide?.part;
     if (!guide || !part) return;
     const handles = r.handles(this.model, frame, pose);

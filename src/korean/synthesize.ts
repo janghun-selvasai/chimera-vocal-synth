@@ -21,6 +21,7 @@ import {
   telemetryLength,
 } from "../worklet/telemetry.ts";
 
+export const STUDIO_CONDITION = "adducted" as const;
 const RATE = 48000;
 const STRIDE = 480; // One model pose per 10 ms of the actual output.
 // The CLI's "clear" condition and both studio views use the same source preset.

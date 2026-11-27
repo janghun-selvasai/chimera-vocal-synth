@@ -1,85 +1,292 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CHIMERA · 한국어 TTS</title><link rel="stylesheet" href="/src/korean/lab.css"></head>
-<body><main>
-<header><div class="brand">CHIMERA <span>/ SPEAK</span></div><h1>한국어 음성 합성</h1></header>
-<nav role="tablist" aria-label="음성 합성 모드">
-<button id="tts" role="tab" aria-selected="true" aria-controls="tts-panel">텍스트 읽기</button>
-<button id="prepare" role="tab" aria-selected="false" aria-controls="prepare-panel" tabindex="-1">첫 입모양</button>
-<button id="speakers" role="tab" aria-selected="false" aria-controls="speaker-panel" tabindex="-1">음색 비교</button>
-<button id="reference" role="tab" aria-selected="false" aria-controls="reference-panel" tabindex="-1">화자 녹음 비교</button>
-<button id="explore" role="tab" aria-selected="false" aria-controls="explorer" tabindex="-1">발화 비교</button>
-<button id="blind" role="tab" aria-selected="false" aria-controls="listener" tabindex="-1">블라인드 청취</button></nav>
-<p id="status" role="status">음성 엔진을 여는 중…</p>
-<section class="studio" id="tts-panel" role="tabpanel" aria-labelledby="tts">
-<form class="composer" id="tts-form">
-<label class="field-title" for="tts-input">읽을 문장</label>
-<textarea id="tts-input" rows="4" maxlength="280" spellcheck="false">불이 보여? 같이 먹어.</textarea>
-<div class="suggestions" aria-label="예시 문장"><button type="button">불이 보여.</button><button type="button">저기 뿔 보여?</button><button type="button">같이 국물을 먹어.</button><button type="button">살과 쌀이 달라요.</button></div>
-<div id="studio-voice-field" class="actions"><div><label for="studio-voice">음색</label>
-<select id="studio-voice"><option value="male">성인 남성</option><option value="female">성인 여성</option><option value="child">아동</option></select></div>
-<div><label for="studio-fortis">ㄲ·ㄸ·ㅃ 발음</label><select id="studio-fortis"><option value="clear">기존 발음</option><option value="adducted">파열 전 성대 모으기 (실험)</option></select></div></div>
-<div class="transport"><button class="primary" id="tts-start" disabled><span aria-hidden="true">▶</span> 읽어 주기</button><button type="button" class="stop" disabled>정지</button></div>
-<p role="status" class="run-status" id="tts-status"></p>
-</form></section>
-<section class="studio" id="prepare-panel" role="tabpanel" aria-labelledby="prepare" hidden>
-<form class="composer" id="prepare-form">
-<label class="field-title" for="prepare-input">발음할 단어</label>
-<input type="text" id="prepare-input" value="불" maxlength="40" autocomplete="off" spellcheck="false">
-<div class="suggestions" aria-label="예시 단어"><button type="button">불</button><button type="button">달</button><button type="button">국물</button><button type="button">먹어</button></div>
-<p class="hint">진행을 누르면 가상 커서가 첫소리에 맞춰 입모양을 잡은 뒤 단어를 읽습니다.</p>
-<div class="transport"><button class="primary" id="prepare-start" disabled><span aria-hidden="true">▶</span> 진행</button><button type="button" class="stop" disabled>정지</button></div>
-<p role="status" class="run-status" id="prepare-status"></p>
-</form></section>
-<figure id="mouth-stage" class="mouth-stage" hidden>
-<figcaption><h2>성도 단면</h2><span id="stage-state">대기</span></figcaption>
-<canvas id="live-head" aria-label="혀, 입술, 턱과 연구개의 움직임을 나타내는 성도 단면"></canvas>
-<div class="stage-footer"><small>움직이는 입자는 기류, 단면선의 밝기는 음압입니다.</small>
-<p>입술 쪽 기류 <strong id="lip-flow">—</strong> <small>cm³/s</small></p>
-<p id="live-phones">발음 기호</p><div id="stage-progress" role="progressbar" aria-label="발화 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div></div>
-</figure>
-<section id="speaker-panel" role="tabpanel" aria-labelledby="speakers" hidden>
-<form id="speaker-form" class="speaker-form"><label for="speaker-text">같은 말, 세 목소리</label>
-<div class="speaker-entry"><input id="speaker-text" maxlength="80" value="살과 쌀이 달라요." required><button class="primary">비교하기</button></div></form>
-<p id="speaker-status" role="status"></p>
-<div id="speaker-controls" hidden><div class="actions"><label>측정할 모음<select id="speaker-vowel"></select></label><button type="button" id="speaker-stop" disabled>정지</button></div>
-<label class="speaker-seek">발화 위치 <span id="speaker-time"></span><input id="speaker-seek" type="range" min="0" max="1" step="0.005" value="0"></label>
-<p class="caption">세 단면은 같은 축척과 재생 시각입니다. 아래 수치는 선택한 모음의 중간 시점에서 측정합니다.</p></div>
-<p id="speaker-difference" hidden></p>
-<div id="speaker-cards"></div>
-<p class="caption" id="speaker-note" hidden>F0는 성대의 초당 진동수이고 F1·F2는 성도의 첫 두 공명 주파수입니다. 막대는 세 프리셋에 같은 눈금을 사용합니다. 수치는 이 합성 모델의 값입니다.</p>
-</section>
-<section id="reference-panel" role="tabpanel" aria-labelledby="reference" hidden>
-<h2>화자 녹음에 맞춘 한국어 발화</h2>
-<p id="ref-status" role="status">비교 음원을 여는 중…</p>
-<div id="ref-content" hidden>
-<div class="controls ref-controls"><label>기준 화자<select id="ref-voice"></select></label><label>듣기 항목<select id="ref-item"></select></label>
-<label class="ref-gain"><input type="checkbox" id="ref-gain" checked> 재생 음량 맞춤</label></div>
-<div id="ref-audio"></div>
-<figure class="panel ref-pitch"><figcaption><h3>발화 중 음높이 <small>Hz</small></h3>
-<p>소리가 시작된 시각을 맞췄습니다. 선이 끊긴 곳은 주기적인 진동을 측정하기 어려운 구간입니다.</p></figcaption>
-<canvas id="ref-plot" aria-label="원음, 조정 전, 조정 후의 출력 음성에서 측정한 기본주파수"></canvas></figure>
-<details id="ref-stops"><summary>여섯 단어의 초성과 받침 비교</summary>
-<p>각 칸은 원음 / 조정 전 / 조정 후 순서입니다. 파열과 유성 개시는 음원에서 추정했으며, 청취자의 단어 식별은 별도 평가입니다.</p>
-<table><thead><tr><th>단어</th><th>파열 → 유성 개시 (ms)</th><th>파열 → 소리 끝 (ms)</th></tr></thead><tbody></tbody></table></details>
-</div></section>
-<section id="explorer" role="tabpanel" aria-labelledby="explore" hidden>
-<div class="controls"><label>단어 · 문장<select id="word"></select></label><label>합성 조건<select id="condition"></select></label>
-<audio id="audio" controls preload="auto" aria-label="선택한 발화"></audio></div>
-<div class="instruments"><section class="panel"><h2>성도 단면</h2><canvas id="head" aria-label="재생 시각의 CHIMERA 성도 단면"></canvas>
-<p class="legend"><b class="tongue">혀</b> · <b class="lips">입술</b> · <b class="jaw">턱</b> · 밝은 단면선은 압력 RMS, 움직이는 입자는 기류</p></section>
-<section class="panel details"><h2>성대와 공기 흐름</h2><label for="site">측정 위치 <output id="siteName"></output></label><input type="range" id="site" min="0" step="1" value="0">
-<div class="readings"><div><small>압력 RMS</small><strong id="pressure"></strong><small>Pa</small></div><div><small>체적 기류</small><strong id="flow"></strong><small>cm³/s</small></div></div>
-<h3>성문 면적 <small>cm²</small></h3><canvas id="fold" aria-label="성문 면적 파형"></canvas><p id="foldNote"></p>
-<p class="caption">단면·압력·기류는 직전 16 ms 프레임, 성문 면적은 1 ms 간격의 모델 계산값입니다.</p></section></div>
-<section class="panel timeline"><div class="section-title"><h2>발화 시간축</h2><output id="clock"></output></div>
-<canvas id="time" aria-label="출력 파형, 유성 구간의 모델 F0, 계획 음소. 클릭해 이동"></canvas>
-<label class="sr" for="seek">발화 시간 이동</label><input type="range" id="seek" min="0" step="0.001" value="0">
-<div class="actions"><button id="release">파열로 이동</button><button id="voice">유성 개시로 이동</button><span id="metric"></span></div>
-<p id="trans"></p></section>
-<details><summary>CLI에서 만든 렌더 열기</summary><label>같은 이름의 WAV, JSON, TELE 파일을 함께 선택하세요.<input type="file" id="import" multiple accept=".wav,.tele,.json"></label><p id="importState" role="status"></p></details></section>
-<section id="listener" class="panel" role="tabpanel" aria-labelledby="blind" hidden><h2>블라인드 청취</h2><p>단어는 들린 표기를 고르세요. 문장은 두 녹음을 듣고 억양과 리듬이 더 자연스러운 쪽을 고르세요. 각 단어·문장의 조건별 음량은 발화 구간 RMS로 맞췄습니다. 응답은 이 창에만 저장됩니다.</p>
-<label>평가 항목<select id="task"><option value="id">단어 식별</option><option value="ab">문장 A/B</option></select></label>
-<p id="trial"></p><div class="actions"><button id="playA">재생</button><button id="playB">B 재생</button></div><div id="answers" class="actions"></div>
-<button id="save">응답 CSV 저장</button></section>
-</main><script type="module" src="/src/korean/lab.ts"></script></body></html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#0b1820" />
+    <title>CHIMERA · 한국어 발화 실험실</title>
+    <link rel="stylesheet" href="/src/korean/lab.css" />
+  </head>
+  <body>
+    <audio id="word-audio" hidden preload="auto"></audio>
+    <main>
+      <header class="mast">
+        <div class="brand">CHIMERA <span>/ SPEAK</span></div>
+        <h1>한국어 발화 실험실</h1>
+      </header>
+      <nav role="tablist" aria-label="실험 모드">
+        <button
+          id="tts"
+          role="tab"
+          aria-selected="true"
+          aria-controls="tts-panel"
+        >
+          텍스트 읽기
+        </button>
+        <button
+          id="prepare"
+          role="tab"
+          aria-selected="false"
+          aria-controls="prepare-panel"
+          tabindex="-1"
+        >
+          애니메이션
+        </button>
+        <button
+          id="speakers"
+          role="tab"
+          aria-selected="false"
+          aria-controls="speaker-panel"
+          tabindex="-1"
+        >
+          음색 비교
+        </button>
+      </nav>
+      <p id="status" role="status">음성 엔진을 여는 중…</p>
+      <section id="tts-panel" role="tabpanel" aria-labelledby="tts">
+        <div class="studio" id="tts-work">
+          <form class="composer" id="tts-form">
+            <label class="field-title" for="tts-input">읽을 문장</label>
+            <textarea
+              id="tts-input"
+              rows="3"
+              maxlength="280"
+              spellcheck="false"
+            >
+불, 풀, 뿔. 같이 먹어?</textarea>
+            <div class="suggestions" aria-label="예시 문장">
+              <button type="button">불, 풀, 뿔.</button
+              ><button type="button">겉옷을 입어.</button
+              ><button type="button">같이 국물을 먹어.</button
+              ><button type="button">살과 쌀이 달라요.</button>
+            </div>
+            <div id="studio-voice-field">
+              <label for="studio-voice">음색</label
+              ><select id="studio-voice">
+                <option value="male">성인 남성</option>
+                <option value="female">성인 여성</option>
+                <option value="child">아동</option>
+              </select>
+            </div>
+            <div class="transport">
+              <button class="primary" id="tts-start" disabled>읽어 주기</button
+              ><button type="button" class="stop" disabled>정지</button>
+            </div>
+            <p role="status" class="run-status" id="tts-status"></p>
+          </form>
+          <figure id="mouth-stage" class="mouth-stage">
+            <figcaption>
+              <h2>성도 단면</h2>
+              <span id="stage-state">대기</span>
+            </figcaption>
+            <canvas
+              id="live-head"
+              aria-label="성도 단면과 위치별 기류"
+            ></canvas>
+            <div class="stage-footer">
+              <div class="flow-line">
+                <span>입술 기류</span><strong id="lip-flow">—</strong
+                ><small>cm³/s</small>
+              </div>
+              <p id="film-effect"></p>
+              <p id="film-reading" hidden></p>
+              <p id="live-phones">발음 기호</p>
+              <div
+                id="stage-progress"
+                role="progressbar"
+                aria-label="발화 진행률"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="0"
+              >
+                <i></i>
+              </div>
+            </div>
+          </figure>
+        </div>
+        <div class="analysis-grid" id="tts-analysis">
+          <section class="panel timeline">
+            <div class="section-title">
+              <h2>발화 시간축</h2>
+              <output id="clock">0.00 s</output>
+            </div>
+            <canvas
+              id="time"
+              aria-label="출력 파형, 기본주파수, 음소 구간. 클릭해 이동"
+            ></canvas>
+            <label class="sr" for="seek">발화 시간 이동</label
+            ><input
+              id="seek"
+              type="range"
+              min="0"
+              max="1"
+              step="0.001"
+              value="0"
+              disabled
+            />
+            <div class="actions">
+              <label class="marker-choice" hidden
+                >파열음<select id="analysis-stop"></select></label
+              ><button id="resume" disabled>여기서 재생</button
+              ><button id="release" disabled>파열로 이동</button
+              ><button id="voice" disabled>유성 개시로 이동</button>
+            </div>
+            <p id="landmarks" class="caption">
+              문장을 읽으면 파형과 발음 구간이 표시됩니다.
+            </p>
+          </section>
+          <section class="panel details">
+            <h2>성대와 공기 흐름</h2>
+            <label for="site">측정 위치 <output id="siteName">—</output></label
+            ><input
+              id="site"
+              type="range"
+              min="0"
+              max="1"
+              step="1"
+              value="0"
+              disabled
+            />
+            <div class="readings">
+              <div>
+                <small>압력 RMS</small><strong id="pressure">—</strong
+                ><small>Pa</small>
+              </div>
+              <div>
+                <small>기류</small><strong id="flow">—</strong
+                ><small>cm³/s</small>
+              </div>
+            </div>
+            <h3>성문 면적 <small>cm²</small></h3>
+            <canvas id="fold" aria-label="현재 시각의 성문 면적 파형"></canvas>
+            <p id="foldNote" class="caption"></p>
+          </section>
+        </div>
+      </section>
+      <section
+        id="prepare-panel"
+        role="tabpanel"
+        aria-labelledby="prepare"
+        hidden
+      >
+        <div class="studio" id="prepare-work">
+          <form class="composer" id="prepare-form">
+            <h2 class="field-title">발화 애니메이션</h2>
+            <div class="mode-switch" aria-label="애니메이션 방식">
+              <button type="button" data-mode="auto" aria-pressed="true">
+                첫 입모양</button
+              ><button type="button" data-mode="manual" aria-pressed="false">
+                직접 조작</button
+              ><button type="button" data-mode="film" aria-pressed="false">
+                공기의 여정
+              </button>
+            </div>
+            <div id="word-controls">
+              <label for="prepare-input">발음할 단어</label
+              ><input
+                type="text"
+                id="prepare-input"
+                value="불"
+                maxlength="40"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <div class="suggestions">
+                <button type="button">불</button
+                ><button type="button">뿔</button
+                ><button type="button">국물</button
+                ><button type="button">먹어</button>
+              </div>
+              <label for="guide-speed"
+                ><span id="speed-label">발화 속도</span>
+                <output id="speed-read">1×</output></label
+              ><input
+                id="guide-speed"
+                type="range"
+                min="0.25"
+                max="2"
+                step="0.25"
+                value="1"
+              />
+            </div>
+            <div id="manual-controls" hidden>
+              <label for="breath"
+                >날숨 강도 <output id="breath-read">7.2 cmH₂O</output></label
+              ><input
+                id="breath"
+                type="range"
+                min="0"
+                max="12"
+                step="0.1"
+                value="7.2"
+              />
+              <label for="manual-part">조작 부위</label
+              ><select id="manual-part">
+                <option value="tongue">혀몸</option>
+                <option value="tip">혀끝</option>
+                <option value="jaw">턱</option>
+                <option value="lips">입술</option>
+                <option value="velum">연구개</option>
+                <option value="larynx">후두</option>
+              </select>
+            </div>
+            <p class="hint" id="mode-hint">
+              가상 커서가 단어의 첫 입모양을 잡은 뒤 발화합니다.
+            </p>
+            <div class="transport">
+              <button class="primary" id="prepare-start" disabled>진행</button
+              ><button type="button" class="stop" disabled>정지</button>
+            </div>
+            <p role="status" class="run-status" id="prepare-status"></p>
+          </form>
+        </div>
+      </section>
+      <section
+        id="speaker-panel"
+        role="tabpanel"
+        aria-labelledby="speakers"
+        hidden
+      >
+        <form id="speaker-form" class="speaker-form">
+          <label for="speaker-text">같은 말, 세 목소리</label>
+          <div class="speaker-entry">
+            <input
+              id="speaker-text"
+              maxlength="80"
+              value="살과 쌀이 달라요."
+              required
+            /><button class="primary">비교하기</button>
+          </div>
+        </form>
+        <p id="speaker-status" role="status"></p>
+        <div id="speaker-controls" hidden>
+          <div class="actions">
+            <label>측정할 모음<select id="speaker-vowel"></select></label
+            ><button type="button" id="speaker-stop" disabled>정지</button>
+          </div>
+          <label class="speaker-seek"
+            >발화 위치 <span id="speaker-time"></span
+            ><input
+              id="speaker-seek"
+              type="range"
+              min="0"
+              max="1"
+              step="0.005"
+              value="0"
+          /></label>
+          <p class="caption">
+            슬라이더로 세 단면을 같은 시각에 맞출 수 있습니다. 듣기를 누르면
+            선택한 음색만 움직입니다.
+          </p>
+        </div>
+        <p id="speaker-difference" hidden></p>
+        <div id="speaker-cards"></div>
+        <p class="caption" id="speaker-note" hidden>
+          F0는 성대의 초당 진동수, F1·F2는 성도의 첫 두 공명 주파수입니다.
+          수치는 선택한 모음의 중간 시점에서 측정합니다.
+        </p>
+      </section>
+    </main>
+    <script type="module" src="/src/korean/lab.ts"></script>
+  </body>
+</html>
