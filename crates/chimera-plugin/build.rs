@@ -43,7 +43,7 @@ fn main() {
     for f in &files {
         let rel = f.strip_prefix(&dist).unwrap().to_string_lossy().replace('\\', "/");
         // the plugin's Rust does the lyrics, so the page never fetches the dictionary
-        if rel.ends_with(".map") || rel.starts_with("shows/") || rel == "data/cmudict.txt.gz" {
+        if rel.ends_with(".map") || rel.starts_with("shows/") || rel.starts_with("korean-lab/") || rel == "korean.html" || rel == "data/cmudict.txt.gz" {
             continue;
         }
         let _ = writeln!(table, "    ({:?}, {:?}, include_bytes!({:?})),", format!("/{rel}"), mime(&rel), f.canonicalize().unwrap().display().to_string());

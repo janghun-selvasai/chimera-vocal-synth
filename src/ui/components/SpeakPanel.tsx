@@ -18,7 +18,7 @@ import { engine } from "../../audio/AudioEngine.ts";
 import { inPlugin } from "../../audio/pluginBridge.ts";
 
 const EXAMPLES: Record<Lang, string[]> = {
-  en: ["Hello. Can you hear me?", "She sells sea shells by the sea shore.", "Every sound here is air moving through a throat.", "The quick brown fox jumps over the lazy dog."],
+  en: ["Hello. Can you hear me?", "She sells sea shells by the sea shore.", "Every sound here is air moving through a throat.", "The quick brown fox jumps over the lazy dog.", "불·풀·뿔. 달·탈·딸.", "먹어, 같이 먹어."],
   tr: ["Merhaba, nasılsın?", "Bugün hava çok güzel.", "Türkçe konuşabiliyor musun?", "Şu köşe yaz köşesi, şu köşe kış köşesi."],
 };
 
@@ -264,6 +264,7 @@ export function SpeakRight() {
               </div>
             </div>
           </div>
+          {!inPlugin && <a href="./korean.html">한국어 발화 실험 ↗</a>}
           {inPlugin && <Lines />}
         </div>
       </Screen>

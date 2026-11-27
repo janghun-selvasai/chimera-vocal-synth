@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CHIMERA · 한국어 발화 실험</title><link rel="stylesheet" href="/src/korean/lab.css"></head>
+<body><main>
+<header><div class="brand">CHIMERA <span>/ SPEAK</span></div><h1>한국어 발화 실험</h1>
+<p>파열에서 첫 성대 진동까지, 같은 발화를 소리와 단면으로 살펴봅니다.</p></header>
+<nav><button id="explore" aria-pressed="true">발화 탐색</button><button id="blind" aria-pressed="false">블라인드 청취</button></nav>
+<p id="status" role="status">렌더 기록을 여는 중…</p>
+<section id="explorer" hidden>
+<div class="controls"><label>단어 · 문장<select id="word"></select></label><label>합성 조건<select id="condition"></select></label>
+<audio id="audio" controls preload="auto" aria-label="선택한 발화"></audio></div>
+<div class="instruments"><section class="panel"><h2>성도 단면</h2><canvas id="head" aria-label="재생 시각의 CHIMERA 성도 단면"></canvas>
+<p class="legend"><b class="tongue">혀</b> · <b class="lips">입술</b> · <b class="jaw">턱</b> · 밝은 단면선은 압력 RMS, 움직이는 입자는 기류</p></section>
+<section class="panel details"><h2>성대와 공기 흐름</h2><label for="site">측정 위치 <output id="siteName"></output></label><input type="range" id="site" min="0" step="1" value="0">
+<div class="readings"><div><small>압력 RMS</small><strong id="pressure"></strong><small>Pa</small></div><div><small>체적 기류</small><strong id="flow"></strong><small>cm³/s</small></div></div>
+<h3>성문 면적 <small>cm²</small></h3><canvas id="fold" aria-label="성문 면적 파형"></canvas><p id="foldNote"></p>
+<p class="caption">단면·압력·기류는 직전 16 ms 프레임, 성문 면적은 1 ms 간격의 모델 계산값입니다.</p></section></div>
+<section class="panel timeline"><div class="section-title"><h2>발화 시간축</h2><output id="clock"></output></div>
+<canvas id="time" aria-label="출력 파형, 유성 구간의 모델 F0, 계획 음소. 클릭해 이동"></canvas>
+<label class="sr" for="seek">발화 시간 이동</label><input type="range" id="seek" min="0" step="0.001" value="0">
+<div class="actions"><button id="release">파열로 이동</button><button id="voice">유성 개시로 이동</button><span id="metric"></span></div>
+<p id="trans"></p></section>
+<details><summary>CLI에서 만든 렌더 열기</summary><label>같은 이름의 WAV, JSON, TELE 파일을 함께 선택하세요.<input type="file" id="import" multiple accept=".wav,.tele,.json"></label><p id="importState" role="status"></p></details></section>
+<section id="listener" class="panel" hidden><h2>블라인드 청취</h2><p>단어는 들린 표기를 고르세요. 문장은 두 녹음을 듣고 억양과 리듬이 더 자연스러운 쪽을 고르세요. 각 단어·문장의 조건별 음량은 발화 구간 RMS로 맞췄습니다. 응답은 이 창에만 저장됩니다.</p>
+<label>평가 항목<select id="task"><option value="id">단어 식별</option><option value="ab">문장 A/B</option></select></label>
+<p id="trial"></p><div class="actions"><button id="playA">재생</button><button id="playB">B 재생</button></div><div id="answers" class="actions"></div>
+<button id="save">응답 CSV 저장</button></section>
+</main><script type="module" src="/src/korean/lab.ts"></script></body></html>
