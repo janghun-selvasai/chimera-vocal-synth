@@ -26,6 +26,9 @@ pub mod vowel_data;
 #[serde(rename_all = "camelCase")]
 pub struct Segment {
     pub ipa: String,
+    /// Surface transcription when a front end realizes a contrast with extra gestures.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_ipa: Option<String>,
     /// duration override (s)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dur: Option<f64>,
@@ -100,6 +103,8 @@ pub enum Intonation {
 #[serde(rename_all = "camelCase")]
 pub struct PlannedSegment {
     pub ipa: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_ipa: Option<String>,
     pub t0: f64,
     pub t1: f64,
     /// lexical stress of vowels (0 unstressed, 1 primary, 2 secondary)

@@ -267,6 +267,7 @@ pub const INLINE_SEGMENTS: usize = 24;
 #[derive(Clone, Copy, Debug, Default)]
 pub struct TimedSegment<'a> {
     pub ipa: &'a str,
+    pub display_ipa: Option<&'a str>,
     /// duration (s), before the speaking rate
     pub dur: f64,
     pub stress: Option<u8>,
@@ -293,6 +294,7 @@ pub struct Timing {
 
 struct Seg<'a> {
     ipa: &'a str,
+    display_ipa: Option<&'a str>,
     dur: f64,
     stress: Option<u8>,
     f0: Option<f64>,
@@ -367,6 +369,7 @@ pub fn plan_utterance(input: &[Segment], o: &PlanOptions) -> Plan {
     });
     let timed = input.iter().zip(&durs).map(|(s, d)| TimedSegment {
         ipa: &s.ipa,
+        display_ipa: s.display_ipa.as_deref(),
         dur: *d,
         stress: s.stress,
         f0: s.f0,
@@ -407,10 +410,10 @@ pub fn plan_timed<'a>(input: impl Iterator<Item = TimedSegment<'a>>, o: &PlanOpt
             };
             for (i, p) in parts.iter().enumerate() {
                 let dur = base * shares.get(i).copied().unwrap_or(1.0);
-                segs.push(Seg { ipa: p, dur, stress: s.stress, f0: s.f0, def: None, vowel: None, glide_from: i > 0, aspirated: None, vot: None, onset_st: None, pressed_release: false, adducted_stop: false, nasalized: s.nasalized, palatalized: None, breathy: s.breathy, glide: None });
+                segs.push(Seg { ipa: p, display_ipa: None, dur, stress: s.stress, f0: s.f0, def: None, vowel: None, glide_from: i > 0, aspirated: None, vot: None, onset_st: None, pressed_release: false, adducted_stop: false, nasalized: s.nasalized, palatalized: None, breathy: s.breathy, glide: None });
             }
         } else {
-            segs.push(Seg { ipa: s.ipa, dur: s.dur, stress: s.stress, f0: s.f0, def: None, vowel: None, glide_from: false, aspirated: s.aspirated, vot: s.vot, onset_st: s.onset_st, pressed_release: s.pressed_release, adducted_stop: s.adducted_stop, nasalized: s.nasalized, palatalized: s.palatalized, breathy: s.breathy, glide: s.glide });
+            segs.push(Seg { ipa: s.ipa, display_ipa: s.display_ipa, dur: s.dur, stress: s.stress, f0: s.f0, def: None, vowel: None, glide_from: false, aspirated: s.aspirated, vot: s.vot, onset_st: s.onset_st, pressed_release: s.pressed_release, adducted_stop: s.adducted_stop, nasalized: s.nasalized, palatalized: s.palatalized, breathy: s.breathy, glide: s.glide });
         }
     }
     for s in segs.iter_mut() {
@@ -469,6 +472,7 @@ pub fn plan_timed<'a>(input: impl Iterator<Item = TimedSegment<'a>>, o: &PlanOpt
         if let Some(planned) = planned.as_deref_mut() {
             planned.push(PlannedSegment {
                 ipa: s.ipa.to_string(),
+                display_ipa: s.display_ipa.map(str::to_owned),
                 t0,
                 t1,
                 stress: if s.vowel.is_some() { Some(s.stress.unwrap_or(0)) } else { None },

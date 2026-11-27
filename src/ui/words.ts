@@ -25,7 +25,7 @@ export function wordSpans(phrases: { segments: Segment[]; words?: string[] }[], 
       j += n;
       if (!first || !last) return;
       t0 ??= first.t0;
-      ipa += s.ipa;
+      ipa += s.displayIpa ?? s.ipa;
       if (s.wordEnd || i === p.segments.length - 1) {
         out.push({ text: p.words?.[wi] ?? ipa, t0, t1: last.t1 });
         wi++;

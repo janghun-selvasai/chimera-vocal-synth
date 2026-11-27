@@ -202,7 +202,7 @@ fn speech_plan(phrases: &[Phrase], body_name: &str, f0: f64) -> Result<(Plan, St
             let s: String = p
                 .segments
                 .iter()
-                .map(|s| format!("{}{}", if s.stress == Some(1) { "ˈ" } else { "" }, s.ipa))
+                .map(|s| format!("{}{}", if s.stress == Some(1) { "ˈ" } else { "" }, s.display_ipa.as_deref().unwrap_or(&s.ipa)))
                 .collect();
             s + if p.intonation == Intonation::Question {
                 "?"

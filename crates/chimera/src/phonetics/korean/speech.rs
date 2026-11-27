@@ -70,6 +70,9 @@ fn connected(words: &[String], clear: bool) -> Vec<Syllable> {
             let fortis = block.onset == Some('ㅆ');
             let s = &mut syllable.onset[0];
             s.pressed_release = fortis;
+            if fortis {
+                s.display_ipa = Some(format!("{}͈", s.ipa));
+            }
             if i == 0 {
                 // Rounded experimental targets from Chang (2013), Figs 2–3. The high-front
                 // context has a smaller contrast than the open vowel. Interpolate other vowels

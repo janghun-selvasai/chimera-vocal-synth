@@ -155,6 +155,7 @@ export interface VoiceTelemetry {
 
 export interface Segment {
   ipa: string;
+  displayIpa?: string;
   dur?: number;
   stress?: number;
   f0?: number;
@@ -190,6 +191,7 @@ export interface SkippedIpa {
 
 export interface PlannedSegment {
   ipa: string;
+  displayIpa?: string;
   t0: number;
   t1: number;
   stress?: number;

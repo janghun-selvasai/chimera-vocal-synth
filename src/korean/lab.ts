@@ -120,7 +120,7 @@ function timeline(take: Take, t: number) {
     if (x(s.t1) - x(s.t0) > 10) {
       g.fillStyle = "#edf3f3";
       g.textAlign = "center";
-      g.fillText(s.ipa, x((s.t0 + s.t1) / 2), 140);
+      g.fillText(s.displayIpa ?? s.ipa, x((s.t0 + s.t1) / 2), 140);
       g.textAlign = "left";
     }
   });

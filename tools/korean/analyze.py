@@ -139,7 +139,7 @@ def main(directory, bundle, table):
                 ),
                 "pitch": [round(v[7], 1) if v[2] >= 0.2 else None for v in p[::2]],
                 "ipa": " | ".join(
-                    " ".join(s["ipa"] for s in ph["segments"]) for ph in d["phrases"]
+                    " ".join(s.get("displayIpa", s["ipa"]) for s in ph["segments"]) for ph in d["phrases"]
                 ),
             }
     bundle.parent.mkdir(parents=True, exist_ok=True)

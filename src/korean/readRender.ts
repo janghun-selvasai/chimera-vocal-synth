@@ -79,7 +79,7 @@ export async function readRender(
       voiced: probes.map((p) => p[2] >= 0.2 ? "1" : "0").join(""),
       glottal: probes.map((p) => p[4]),
       rms: Math.sqrt(energy / n),
-      ipa: d.plan.segments.map((s: { ipa: string }) => s.ipa).join(" "),
+      ipa: d.plan.segments.map((s: { ipa: string; displayIpa?: string }) => s.displayIpa ?? s.ipa).join(" "),
     },
   };
 }

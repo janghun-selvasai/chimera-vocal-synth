@@ -36,6 +36,8 @@ fn sibilants_keep_the_post_sandhi_contrast_in_the_clear_condition() {
         let a = initial(plain, Condition::Clear);
         let b = initial(tense, Condition::Clear);
         assert_eq!(a.ipa, b.ipa);
+        assert_eq!(a.display_ipa, None);
+        assert_eq!(b.display_ipa, Some(format!("{}͈", b.ipa)));
         assert!(a.dur.unwrap() < b.dur.unwrap());
         assert!(a.vot.unwrap() > b.vot.unwrap());
         assert!(!a.pressed_release && b.pressed_release);
@@ -52,6 +54,7 @@ fn sibilants_keep_the_post_sandhi_contrast_in_the_clear_condition() {
         .unwrap()
         .clone();
     assert!(medial.pressed_release);
+    assert_eq!(medial.display_ipa.as_deref(), Some("s͈"));
     assert!(medial.vot.is_none());
 }
 

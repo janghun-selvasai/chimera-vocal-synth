@@ -7,6 +7,15 @@ const { guideFrame, movingParts, STEP_SECONDS } =
   await import("../src/korean/poseGuide.ts");
 const { ARTIC_KEYS, NEUTRAL } = await import("../src/wasm/engine.ts");
 
+test("the Korean timeline preserves the tense sibilant after planning", async () => {
+  const signal = new AbortController().signal;
+  const take = await synthesize("살과 쌀이 달라요.", false, signal);
+  const sibilants = take.segments.filter(s => s.ipa === "s");
+  expect(sibilants.map(s => s.displayIpa ?? s.ipa)).toEqual(["s", "s͈"]);
+  const prepared = await synthesize("씨", true, signal);
+  expect(prepared.first).toBe("ɕ͈");
+});
+
 test("a prepared word starts at its measured first PCM pose and keeps the whole initial consonant", async () => {
   const signal = new AbortController().signal;
   const bul = await synthesize("불", true, signal);

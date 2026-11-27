@@ -102,7 +102,7 @@ export function setupStudio() {
     const started = ctx!.currentTime;
     const symbols = take.segments.map((s) => {
       const span = document.createElement("span");
-      span.textContent = s.ipa;
+      span.textContent = s.displayIpa ?? s.ipa;
       return span;
     });
     phones.replaceChildren(...symbols);

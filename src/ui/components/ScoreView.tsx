@@ -108,7 +108,7 @@ export function ScoreView() {
       lastRight = x + 6;
       const on = now >= s.t0 && now < s.t1;
       seg(ctx, X(s.t0), bottom + 2, X(s.t0), bottom + 6, V.blueDim, 1);
-      label(ctx, s.ipa, x, h - 8, { size: 12, color: on ? V.white : TEXT.primary, align: "center", ls: 0 });
+      label(ctx, s.displayIpa ?? s.ipa, x, h - 8, { size: 12, color: on ? V.white : TEXT.primary, align: "center", ls: 0 });
     }
     // playhead
     if (now >= T0 && now <= T1) {

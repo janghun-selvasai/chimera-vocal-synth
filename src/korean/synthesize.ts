@@ -34,7 +34,7 @@ export interface Utterance {
   rate: number;
   frames: TelemetryMessage[];
   first: string;
-  segments: { ipa: string; kind: string; start: number; end: number }[];
+  segments: { ipa: string; displayIpa?: string; kind: string; start: number; end: number }[];
 }
 
 export function validateInput(input: string, single: boolean): string {
@@ -178,9 +178,10 @@ export async function synthesize(
       samples,
       rate: RATE,
       frames,
-      first: first.ipa,
+      first: first.displayIpa ?? first.ipa,
       segments: plan.segments.map((s) => ({
         ipa: s.ipa,
+        displayIpa: s.displayIpa,
         kind: s.kind,
         start: s.t0 - timeOffset,
         end: s.t1 - timeOffset,
